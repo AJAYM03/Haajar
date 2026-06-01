@@ -1,151 +1,42 @@
-# Attendance Copilot Extension
+# Haajar (ഹാജർ) 📊
 
-This is a loadable Chrome/Edge Manifest V3 prototype for the Attendance Copilot idea.
+A privacy-first browser extension for the Rajagiri Students' Management System (RSMS). Haajar helps students calculate subject-wise attendance percentages, simulate the impact of future leaves, and map out exactly how many classes they need to attend to stay above the 75% baseline. 
 
-## What It Does
+All data is stored locally using `chrome.storage.local`—no external databases, no logins, and zero privacy risks[cite: 1].
 
-- Syncs attendance/absence rows from the currently open student portal page.
-- Syncs class code and subject-code mappings from RSMS marks pages.
-- Stores data locally with `chrome.storage.local`.
-- Keeps each synced class/semester separate by RSMS class code.
-- Calculates subject-wise attendance using absence records plus your timetable.
-- Supports Internal 1, Internal 2, and Semester attendance windows.
-- Simulates the impact of planned leave dates.
-- Shows recovery guidance when a subject falls below the target.
-- Allows manual CSV-style record import while portal parsing is being tuned.
+## 🛠️ Current Status: Developer Handoff
+**The Core Bug (Why everything shows 100%):** 
+The extension successfully scrapes absence records and generates a timetable, but fails to map them together. 
+* **The Cause:** The timetable UI uses shorthand text (like `DC` or `PROJECT`), but the RSMS Leave Details page logs absences using strict alphanumeric codes (like `CS800A` and `CS822U`)[cite: 1, 2]. 
+* **The Result:** Because `DC` !== `CS800A`, the logic assumes there are 0 cuts for `DC`, leaving attendance at a default 100%. 
+* **The Fix Needed:** The timetable input grid needs to enforce matching against the scraped `subjectCatalog` so the records correctly sync.
 
-## Load It In Chrome Or Edge
+## ✨ Features
+* **Zero-Knowledge Architecture:** Runs entirely in the browser. Scanner only executes on demand when "Sync" is pressed[cite: 1].
+* **Smart Parsing:** Decodes the color-coded RSMS leave grid (Leave, Approved Leave, Duty Leave)[cite: 1].
+* **Bunk Simulator:** Pick future dates to see how taking days off will impact specific subject percentages[cite: 1].
+* **Recovery Guidance:** Calculates the exact "Safe Buffer" of classes you can miss, or the exact number you must attend to recover[cite: 1].
 
-1. Open `chrome://extensions` or `edge://extensions`.
-2. Enable Developer Mode.
-3. Click **Load unpacked**.
-4. Select this folder:
+## 🚀 How to Install for Development
+1. Clone this repository.
+2. Open Chrome or Edge and navigate to `chrome://extensions/` or `edge://extensions/`[cite: 1].
+3. Enable **Developer mode** in the top right[cite: 1].
+4. Click **Load unpacked** and select the `Haajar` folder[cite: 1].
 
-   `attendance-copilot-extension`
+## 🧪 Testing Protocol
+Since the extension requires an RSMS portal, test it using historical data.
 
-5. Open your attendance portal page.
-6. Click the extension icon and press **Sync**.
+1. **Profile Sync:** Open an old RSMS **Marks/Internal Exam** page and press **Sync** to capture the class code and subject catalog[cite: 1].
+2. **Timetable Setup:** Go to the extension's Setup tab. Paste the Master CSV below into the bulk import box and click **Import**[cite: 1].
+3. **Leave Sync:** Open the historical RSMS **Leave Details** page and press **Sync**[cite: 1].
+4. Check the Dashboard to verify calculations. 
 
-The scanner runs only when you press **Sync**. It is not an always-on content script.
-
-## Portal Parser Notes
-
-The content script has a dedicated parser for the RSMS Leave Details grid shown by Rajagiri. It detects the table with `Date/Hours`, reads hour columns `1` through `7`, and maps the cell background color to attendance status:
-
-- red = `Leave`
-- green = `Approved Leave`
-- orange = `Duty Leave`
-- yellow = `Duty Attendance`
-
-It also strips the RSMS numeric prefix from subject cells, so `101003/CS822U` is stored as `CS822U`. That makes portal records easier to match with timetable entries.
-
-The same Sync button also works on the RSMS marks/internal exam page. On that page it may import `0` leave records, but it still updates:
-
-- class code, such as `2026S8CS-A`
-- semester identity, such as `Semester 8`
-- subject codes and names, such as `CS800A = DISTRIBUTED COMPUTING`
-- lab/theory subject rows when they appear in code-name tables
-
-The fallback parser is intentionally heuristic because college portals differ. It looks for table rows or text lines containing:
-
-- a date
-- an hour/period when available
-- a subject
-- a status such as `Absent`, `Leave`, `Approved Leave`, `Duty Leave`, or `Duty Attendance`
-
-If your actual portal has stable HTML IDs/classes, the next best step is to replace the heuristic parser in `src/content.js` with portal-specific selectors.
-
-## Test Fixture
-
-Use `fixtures/rsms-leave-details.html` to test the extension without relying on the old portal account.
-
-1. Load the extension unpacked.
-2. Enable **Allow access to file URLs** for the extension, or serve the folder from a local web server.
-3. Open `fixtures/rsms-leave-details.html` in the browser.
-4. Click the extension icon and press **Sync**.
-5. Expected imported records from the fixture: `15`.
-
-## RSMS S7 Test Setup
-
-After syncing the `2025S7CS-A` page, use this temporary inferred timetable to test the dashboard. This is inferred from the leave grid you shared, not the official timetable.
-
-If you sync another class/semester, it will appear in the class selector on the dashboard. Each class has its own records, subject catalog, attendance windows, holidays, and timetable.
-
-Set the Semester window to:
-
-- Start date: `2025-08-11`
-- End date: `2025-10-13`
-- Target: `75`
-
-Fill the timetable like this:
-
-| Day | 1 | 2 | 3 | 4 | 5 | 6 | 7 |
-| --- | --- | --- | --- | --- | --- | --- | --- |
-| Monday | CS700A | CS722U | CS722U | CE701C-B1 | CS706B-B1 | CO700D | |
-| Tuesday | CE701C-B1 | CS722S | | | | | |
-| Wednesday | CS700A | CO700D | | | | | |
-| Thursday | | | | | | | |
-| Friday | | CS706B-B1 | CO700D | | CS722T | CS722T | CS722T |
-
-Known subject names from the attached subject list:
-
-| Code | Subject |
-| --- | --- |
-| CS700A | ARTIFICIAL INTELLIGENCE |
-| CS701B | MACHINE LEARNING |
-| CS706B-B1 | WEB PROGRAMMING-B1 |
-| CS707B | NATURAL LANGUAGE PROCESSING |
-| CE701C-B1 | ENVIRONMENTAL IMPACT ASSESSMENT-B1 |
-| CO700D | INDUSTRIAL SAFETY ENGINEERING |
-
-Codes visible in the leave grid but not present in the attached subject-name table:
-
-- `CS722U`
-- `CS722S`
-- `CS722T`
-
-## Timetable Import
-
-College timetable PDFs often do not include the RSMS class code, so the production flow is:
-
-1. Open the RSMS marks/internal exam page and press **Sync** to capture the class code and subject names.
-2. Open **Setup** in the extension for that class.
-3. Paste the timetable rows from the PDF into **Bulk import timetable**.
-4. Click **Import Timetable Rows**.
-5. Review the 7 hour boxes and click **Save Timetable**.
-
-Bulk timetable row format:
+### S8 Master CSV for Testing
+Use this CSV block to quickly populate the timetable for testing[cite: 1]. Replace the `_CODE` placeholders with exact RSMS alphanumeric codes to test the mapping fix:
 
 ```csv
-Monday, CS800A, CS801B, CS802B-B1, MA805B, CS804C-B1, CS806C, CS807C
-Tuesday, CS800A, CS801B, CS802B-B1, MA805B, CS804C-B1, CS806C, CS807C
-Wednesday, CS800A, CS801B, CS802B-B1, MA805B, CS804C-B1, CS806C, CS807C
-Thursday, CS800A, CS801B, CS802B-B1, MA805B, CS804C-B1, CS806C, CS807C
-Friday, CS800A, CS801B, CS802B-B1, MA805B, CS804C-B1, CS806C, CS807C
-```
-
-The timetable is saved only under the active class/semester, so `2026S8CS-A` and `2025S7CS-A` do not share timetable settings.
-
-## Manual Record Format
-
-Use one row per missed/recorded period:
-
-```csv
-2026-07-10, 2, DBMS, Absent
-2026-07-11, 5, OS, Duty Leave
-```
-
-## Important MVP Assumptions
-
-- Presence is inferred when no absence/leave record exists for a generated timetable slot.
-- `Duty Leave`, `Duty Attendance`, `Approved Leave`, `Present`, `OD`, and `On Duty` count positively.
-- `Absent` and plain `Leave` count negatively.
-- Holidays entered in setup are excluded from conducted-class estimates.
-- Teacher swaps and cancelled classes are not modeled yet.
-
-## Suggested Next Steps
-
-- Tune `src/content.js` against screenshots or saved HTML from the real portal.
-- Add academic calendar import.
-- Add official PDF calibration once attendance reports are available.
-- Add export/import backup for local extension data.
+Monday, COMPREHENSIVE_CODE, CS822U, ELECTIVE_4_CODE, CS800A, ELECTIVE_5_CODE, ELECTIVE_5_CODE, 
+Tuesday, COMPREHENSIVE_CODE, CS800A, CS822U, ELECTIVE_3_CODE, CS822U, CS822U, 
+Wednesday, CS822U, CS800A, CS822U, ELECTIVE_3_CODE, ELECTIVE_4_CODE, ELECTIVE_5_CODE, 
+Thursday, ELECTIVE_5_CODE, CS800A, CS822U, ELECTIVE_3_CODE, ELECTIVE_4_CODE, MENTORING, 
+Friday, ELECTIVE_5_CODE, CS800A, CS822U, HONORS_CODE, ELECTIVE_3_CODE, ELECTIVE_5_CODE, CS822U

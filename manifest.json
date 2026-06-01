@@ -1,0 +1,28 @@
+{
+  "manifest_version": 3,
+  "name": "Attendance Copilot",
+  "description": "Subject-wise attendance visibility, leave impact simulation, and recovery planning from portal absence records.",
+  "version": "1.0.0",
+  "icons": {
+    "16": "assets/AC logo.png",
+    "48": "assets/AC logo.png",
+    "128": "assets/AC logo.png"
+  },
+  "action": {
+    "default_title": "Attendance Copilot",
+    "default_popup": "src/popup.html",
+    "default_icon": {
+      "16": "assets/AC logo.png",
+      "48": "assets/AC logo.png",
+      "128": "assets/AC logo.png"
+    }
+  },
+  "permissions": [
+    "activeTab",
+    "storage",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "src/background.js"
+  }
+}

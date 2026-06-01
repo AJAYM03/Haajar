@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>RSMS Leave Details Fixture</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Arial, sans-serif;
+      }
+
+      header {
+        padding: 18px 34px;
+        background: linear-gradient(90deg, #00629a, #16a7d8);
+        color: white;
+      }
+
+      h1 {
+        margin: 8px 0 0;
+        font-size: 30px;
+      }
+
+      main {
+        padding: 22px;
+      }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        text-align: center;
+      }
+
+      th {
+        height: 32px;
+        background: linear-gradient(#00b8e8, #005398);
+        color: white;
+      }
+
+      td {
+        height: 34px;
+        background: #eeeeee;
+        color: white;
+        font-weight: 700;
+      }
+
+      td:first-child {
+        width: 150px;
+        background: #aaaaaa;
+        color: #0069a8;
+        font-weight: 400;
+      }
+
+      .leave {
+        background: #b60000;
+      }
+
+      .approved {
+        background: #008000;
+      }
+
+      .duty-leave {
+        background: #ff9900;
+      }
+
+      .duty-attendance {
+        background: #d1d500;
+      }
+
+      .legend {
+        display: flex;
+        justify-content: center;
+        gap: 48px;
+        margin-top: 28px;
+      }
+
+      .legend span {
+        display: inline-block;
+        width: 170px;
+        height: 14px;
+        margin-right: 8px;
+        vertical-align: middle;
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <strong>RSMS</strong>
+      <h1>Rajagiri Students' Management System</h1>
+    </header>
+
+    <main>
+      <h2>LEAVE DETAILS</h2>
+      <table>
+        <tr>
+          <th>Date/Hours</th>
+          <th>1</th>
+          <th>2</th>
+          <th>3</th>
+          <th>4</th>
+          <th>5</th>
+          <th>6</th>
+          <th>7</th>
+        </tr>
+        <tr>
+          <td>8-Dec-2025</td>
+          <td class="duty-attendance">101003/CS822U</td>
+          <td class="duty-attendance">101003/CS822U</td>
+          <td class="duty-attendance">101003/CS800A</td>
+          <td class="duty-attendance">101003/CS800T</td>
+          <td class="duty-attendance">101003/CS804C-B1</td>
+          <td></td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>1-Jan-2026</td>
+          <td class="leave">101003/CS802B-B1</td>
+          <td></td>
+          <td class="leave">101003/CS822H</td>
+          <td class="leave">101003/CS822U</td>
+          <td class="leave">101003/CS803D</td>
+          <td class="leave">101003/CS800A</td>
+          <td></td>
+        </tr>
+        <tr>
+          <td>13-Feb-2026</td>
+          <td></td>
+          <td class="duty-attendance">101003/CS804C-B1</td>
+          <td class="duty-attendance">101003/CS802B-B1</td>
+          <td></td>
+          <td class="leave">101003/CS822U</td>
+          <td class="duty-leave">101003/CS822U</td>
+          <td class="duty-leave">101003/CS822U</td>
+        </tr>
+      </table>
+
+      <div class="legend">
+        <div><span class="leave"></span>Leave</div>
+        <div><span class="approved"></span>Approved Leave</div>
+        <div><span class="duty-leave"></span>Duty Leave</div>
+        <div><span class="duty-attendance"></span>Duty Attendance</div>
+      </div>
+    </main>
+  </body>
+</html>

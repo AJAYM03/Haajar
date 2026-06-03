@@ -67,7 +67,17 @@ async function syncFromPortal() {
       appState.classes[classCode].settings.holidays = Array.from(existing).sort();
     }
     
-    const lastSync = { pageTitle: res.pageTitle, scannedAt: res.scannedAt, imported: res.records.length, subjects: Object.keys(res.subjectCatalog || {}).length, classInfo: res.classInfo || null };
+    // Calculate the TRUE totals for the active class after the merge
+    const totalSubjects = Object.keys(appState.classes[classCode].subjectCatalog || {}).length;
+    const totalRecords = appState.records.filter(r => r.classCode === classCode).length;
+    
+    const lastSync = { 
+      pageTitle: res.pageTitle, 
+      scannedAt: res.scannedAt, 
+      imported: totalRecords, 
+      subjects: totalSubjects, 
+      classInfo: res.classInfo || null 
+    };
     appState.lastSync = lastSync;
     appState.classes[classCode].lastSync = lastSync;
     

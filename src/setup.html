@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Haajar Setup</title>
+    <link rel="stylesheet" href="popup.css">
+    <style>
+      body { width: 100%; max-width: 800px; margin: 40px auto; min-height: 100vh; padding: 20px; }
+      .app { box-shadow: 0 4px 20px rgba(0,0,0,0.05); padding: 30px; border-radius: 12px; background: white; }
+      .timetable { display: flex; flex-direction: column; gap: 0; margin: 15px 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+      .day-row { padding: 12px; border-bottom: 1px solid var(--line); }
+      .day-row:last-child { border-bottom: none; }
+      .day-row strong { display: block; margin-bottom: 8px; font-size: 13px; text-transform: uppercase; letter-spacing: 0.5px; }
+      .slots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+      select.slot-input { appearance: auto; padding: 8px 4px; text-align: center; font-size: 12px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); border-radius: 6px; width: 100%; background: var(--bg); transition: all 0.2s; }
+      select.slot-input:hover { border-color: var(--accent); }
+      select.slot-input.is-placeholder { border-color: #f59e0b; background: #fffbeb; color: #b45309; }
+      .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+    </style>
+  </head>
+  <body>
+    <main class="app">
+      <header class="topbar">
+        <div>
+          <h1>⚙️ Haajar Setup</h1>
+          <p id="classContextLabel" style="margin-top: 4px;">Loading...</p>
+        </div>
+      </header>
+
+      <section id="setup" class="view is-active">
+        <div class="two-col">
+          <form id="settingsForm" class="panel">
+            <div class="section-title"><h2>Window Dates</h2></div>
+            <div class="grid" style="margin-top: 10px;">
+              <label>Active Window
+                <select id="activeWindow">
+                  <option value="internal1">Internal 1</option>
+                  <option value="internal2">Internal 2</option>
+                  <option value="semester">Semester</option>
+                </select>
+              </label>
+              <label>Start date<input id="windowStart" type="date"></label>
+              <label>End date<input id="windowEnd" type="date"></label>
+              <label>Target %<input id="windowTarget" type="number" min="1" max="100" step="1"></label>
+            </div>
+            
+            <div class="grid" style="grid-template-columns: 1fr 1fr; margin-top: 10px; gap: 10px;">
+              <label>Holidays (YYYY-MM-DD)
+                <textarea id="holidays" rows="4" placeholder="2026-07-15"></textarea>
+              </label>
+              <label>Special Working Days (Date = Day)
+                <textarea id="specialDays" rows="4" placeholder="2026-08-08 = Tuesday"></textarea>
+              </label>
+            </div>
+            <button class="primary" type="submit" style="margin-top: 10px; width: 100%;">Save Settings</button>
+          </form>
+
+          <section class="panel">
+            <div class="section-title"><h2>Data Backup</h2></div>
+            <p class="hint" style="margin-bottom: 10px;">Download your data or restore a previous state.</p>
+            <button id="exportStateButton" type="button" style="width: 100%; margin-bottom: 5px;">Export Diagnostic File</button>
+            <button id="importStateButton" type="button" style="width: 100%; margin-bottom: 20px;">Import Backup File</button>
+            <input type="file" id="importStateFile" accept=".json" style="display: none;">
+            
+            <div class="section-title"><h2>Manual Records</h2></div>
+            <textarea id="manualRecords" rows="2" placeholder="2026-07-10, 2, DBMS, Absent" style="margin-bottom: 10px;"></textarea>
+            <button id="importManualButton" type="button" style="width: 100%; margin-bottom: 5px;">Import Manual CSV</button>
+            <button id="clearRecordsButton" type="button" style="width: 100%; color: var(--danger); border-color: #f8d7da; background: #fff5f5;">Clear All Records</button>
+          </section>
+        </div>
+
+        <section class="panel">
+          <div class="section-title"><h2>Timetable Mapping</h2></div>
+          <p class="hint" style="margin-bottom: 10px;">Paste your Master CSV below. For any yellow elective blocks, click the box and select your specific subject.</p>
+          <label>
+            <textarea id="bulkTimetable" rows="4" placeholder="Monday, COMPREHENSIVE_CODE, CS822U, ELECTIVE_4_CODE..."></textarea>
+          </label>
+          <button id="importTimetableButton" type="button" style="margin-bottom: 15px;">Import Timetable Rows</button>
+          
+          <div id="timetableEditor" class="timetable"></div>
+          <button id="saveTimetableButton" class="primary" type="button" style="width: 100%;">Save Timetable</button>
+        </section>
+      </section>
+    </main>
+
+    <script src="setup.js"></script>
+  </body>
+</html>

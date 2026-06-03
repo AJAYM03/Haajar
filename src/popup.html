@@ -2,133 +2,49 @@
 <html lang="en">
   <head>
     <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Attendance Copilot</title>
+    <title>Haajar</title>
     <link rel="stylesheet" href="popup.css">
   </head>
   <body>
     <main class="app">
       <header class="topbar">
         <div>
-          <h1>Attendance Copilot</h1>
+          <h1>Haajar (ഹാജർ)</h1>
           <p id="syncMeta">No portal sync yet</p>
         </div>
-        <button id="syncButton" class="primary">Sync</button>
+        <div style="display: flex; gap: 8px;">
+          <button id="openSetupButton" title="Open Setup">⚙️</button>
+          <button id="syncButton" class="primary">Sync</button>
+        </div>
       </header>
-      <div id="syncStatus" class="sync-status" role="status" aria-live="polite"></div>
+      <div id="syncStatus" class="sync-status" role="status"></div>
 
-      <nav class="tabs" aria-label="Views">
+      <nav class="tabs">
         <button class="tab is-active" data-view="dashboard">Dashboard</button>
         <button class="tab" data-view="simulator">Simulator</button>
-        <button class="tab" data-view="setup">Setup</button>
       </nav>
 
       <section id="dashboard" class="view is-active">
         <section id="classContext" class="class-context"></section>
         <div class="summary">
-          <div>
-            <span class="label">Active Window</span>
-            <strong id="activeWindowLabel">Semester</strong>
-          </div>
-          <div>
-            <span class="label">Target</span>
-            <strong id="targetLabel">75%</strong>
-          </div>
-          <div>
-            <span class="label">Records</span>
-            <strong id="recordCount">0</strong>
-          </div>
+          <div><span class="label">Active Window</span><strong id="activeWindowLabel">Semester</strong></div>
+          <div><span class="label">Target</span><strong id="targetLabel">75%</strong></div>
+          <div><span class="label">Records</span><strong id="recordCount">0</strong></div>
         </div>
         <div id="subjectList" class="subject-list"></div>
       </section>
 
       <section id="simulator" class="view">
         <form id="leaveForm" class="panel">
-          <label>
-            Leave starts
-            <input id="leaveStart" type="date" required>
-          </label>
-          <label>
-            Leave ends
-            <input id="leaveEnd" type="date" required>
-          </label>
-          <button class="primary" type="submit">Simulate</button>
+          <div class="grid">
+            <label>Leave starts<input id="leaveStart" type="date" required></label>
+            <label>Leave ends<input id="leaveEnd" type="date" required></label>
+          </div>
+          <button class="primary" type="submit" style="width: 100%; margin-top: 10px;">Simulate Cuts</button>
         </form>
         <div id="simulationResult" class="subject-list"></div>
       </section>
-
-      <section id="setup" class="view">
-        <form id="settingsForm" class="panel">
-          <label>
-            Attendance window
-            <select id="activeWindow">
-              <option value="internal1">Internal 1</option>
-              <option value="internal2">Internal 2</option>
-              <option value="semester">Semester</option>
-            </select>
-          </label>
-          <div class="grid">
-            <label>
-              Start date
-              <input id="windowStart" type="date">
-            </label>
-            <label>
-              End date
-              <input id="windowEnd" type="date">
-            </label>
-            <label>
-              Target %
-              <input id="windowTarget" type="number" min="1" max="100" step="1">
-            </label>
-          </div>
-          <label>
-            Holidays, one date per line
-            <textarea id="holidays" rows="3" placeholder="2026-07-15"></textarea>
-          </label>
-          <button class="primary" type="submit">Save Settings</button>
-        </form>
-
-        <section class="panel">
-          <div class="section-title">
-            <h2>Timetable</h2>
-            <button id="addSubjectButton" type="button">Add Subject</button>
-          </div>
-          <label>
-            Bulk import timetable
-            <textarea id="bulkTimetable" rows="5" placeholder="Monday, CS800A, CS801B, CS802B-B1, MA805B, CS804C-B1, CS806C, CS807C"></textarea>
-          </label>
-          <button id="importTimetableButton" type="button">Import Timetable Rows</button>
-          <div id="timetableEditor" class="timetable"></div>
-          <div id="timetableStatus" class="inline-status" role="status" aria-live="polite"></div>
-          <button id="saveTimetableButton" class="primary" type="button">Save Timetable</button>
-        </section>
-
-        <section class="panel">
-          <div class="section-title">
-            <h2>Manual Records</h2>
-            <button id="clearRecordsButton" type="button">Clear Records</button>
-          </div>
-          <textarea id="manualRecords" rows="6" placeholder="2026-07-10, 2, DBMS, Absent"></textarea>
-          <button id="importManualButton" class="primary" type="button">Import CSV Rows</button>
-        </section>
-
-
-        <section class="panel">
-          <div class="section-title">
-            <h2>Backup</h2>
-          </div>
-          <p class="hint">Export all local classes, timetable rows, windows, holidays, and attendance records before switching devices or clearing browser data.</p>
-          <div class="backup-actions">
-            <button id="exportStateButton" type="button">Export Backup</button>
-            <label class="file-button" for="importStateFile">Import Backup</label>
-            <input id="importStateFile" type="file" accept="application/json,.json">
-          </div>
-          <div id="backupStatus" class="inline-status" role="status" aria-live="polite"></div>
-        </section>
-
-      </section>
     </main>
-
     <script src="popup.js"></script>
   </body>
 </html>

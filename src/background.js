@@ -13,20 +13,13 @@ chrome.runtime.onInstalled.addListener(() => {
             semester: { label: "Semester", start: "", end: "", target: 75 }
           },
           holidays: [],
-          timetable: createDefaultTimetable()
+          specialDays: {},
+          timetable: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map((day) => ({
+            day,
+            slots: Array.from({ length: 7 }, (_, index) => ({ hour: index + 1, subject: "" }))
+          }))
         }
       }
     });
   });
 });
-
-function createDefaultTimetable() {
-  const weekdays = ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"];
-  return weekdays.map((day) => ({
-    day,
-    slots: Array.from({ length: 7 }, (_, index) => ({
-      hour: index + 1,
-      subject: ""
-    }))
-  }));
-}

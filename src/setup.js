@@ -23,8 +23,35 @@ function bindEvents() {
 }
 
 function render() {
-  const profile = getCurrentClassProfile();
-  document.getElementById("classContextLabel").textContent = profile ? `Configuring: ${profile.classInfo?.label || profile.classInfo?.classCode || "Unknown Class"}` : "No class synced yet. Please sync from popup first.";
+  const classCodes = Object.keys(appState.classes || {}).sort();
+  const container = document.getElementById("classContextContainer");
+  const setupSection = document.getElementById("setup");
+
+  // If the user wiped everything and has no semesters left
+  if (!classCodes.length) {
+    container.innerHTML = `<span style="color: rgba(255, 255, 255, 0.8); font-size: 13px;">No class synced yet. Please sync from the popup first.</span>`;
+    setupSection.style.display = "none"; // Hide the forms
+    return;
+  }
+
+  // Show the forms and build the dropdown
+  setupSection.style.display = "block";
+  container.innerHTML = `
+    <div style="color: rgba(255, 255, 255, 0.9); font-size: 13px; display: flex; align-items: center; gap: 8px;">
+      <span>Configuring:</span>
+      <select id="setupClassPicker" style="width: auto; padding: 4px 8px; font-size: 12px; background: rgba(0, 0, 0, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; cursor: pointer;">
+        ${classCodes.map(c => `<option value="${escapeHtml(c)}" ${c === getActiveClassCode() ? "selected" : ""} style="color: #000;">${escapeHtml(appState.classes[c].classInfo?.label || c)}</option>`).join("")}
+      </select>
+    </div>
+  `;
+
+  // When the user picks a different semester, update state and re-render
+  document.getElementById("setupClassPicker")?.addEventListener("change", (e) => {
+    appState.activeClassCode = e.target.value;
+    appState.classInfo = getCurrentClassProfile()?.classInfo || null;
+    saveState(appState).then(render);
+  });
+
   renderSettings();
   renderTimetable();
 }
@@ -151,10 +178,24 @@ function importManualRecords() {
 
 function clearRecords() {
   const classCode = getActiveClassCode();
-  if (!confirm(`Clear all records for ${classCode || "the active class"}?`)) return;
+  if (!confirm(`Are you sure? This will completely delete the timetable, subjects, and all attendance records for ${classCode || "this class"}.`)) return;
+  
+  // 1. Delete all attendance records for this class
   appState.records = appState.records.filter(r => r.classCode !== classCode);
-  if (appState.classes?.[classCode]) appState.classes[classCode].lastSync = null;
-  saveState(appState).then(() => { alert("Records cleared."); render(); });
+  
+  // 2. Completely delete the class profile (wipes the timetable and settings)
+  if (appState.classes && appState.classes[classCode]) {
+    delete appState.classes[classCode];
+  }
+  
+  // 3. Reset the active class code so the UI knows it's empty
+  appState.activeClassCode = Object.keys(appState.classes || {})[0] || "";
+  appState.classInfo = appState.activeClassCode ? appState.classes[appState.activeClassCode].classInfo : null;
+  
+  saveState(appState).then(() => { 
+    alert("Semester data completely wiped."); 
+    render(); 
+  });
 }
 
 function exportState() {

@@ -112,6 +112,14 @@ function render() {
   const lastSync = getCurrentClassProfile()?.lastSync || appState.lastSync;
   document.getElementById("syncMeta").textContent = lastSync ? syncMetaText(lastSync) : "No portal sync yet";
   renderSubjectCards(document.getElementById("subjectList"), calculateSubjects());
+
+  // ADD THESE THREE LINES: Lock the simulator to the current semester dates
+  const simStart = document.getElementById("leaveStart");
+  const simEnd = document.getElementById("leaveEnd");
+  if (simStart && simEnd && active.start && active.end) {
+    simStart.min = active.start; simStart.max = active.end;
+    simEnd.min = active.start; simEnd.max = active.end;
+  }
 }
 
 function renderClassContext() {
@@ -137,7 +145,17 @@ function renderClassContext() {
 
 function renderSubjectCards(container, subjects, suffix = "") {
   if (!subjects.length) {
-    container.innerHTML = `<div class="panel empty" style="text-align: left;"><h3 style="color:var(--maroon); margin-bottom: 8px;">Setup Required</h3><ol style="margin:0; padding-left:18px; line-height:1.6;"><li>Sync your RSMS Marks page.</li><li>Click the ⚙️ gear icon above.</li><li>Paste your Timetable CSV and select your electives.</li><li>Sync your Leave Details page.</li></ol></div>`;
+    container.innerHTML = `
+      <div class="panel empty" style="text-align: left;">
+        <h3 style="color:var(--maroon); margin-bottom: 8px; margin-top: 0;">Setup Required</h3>
+        <p style="font-size: 12px; margin-bottom: 10px; color: var(--muted);">New semester or fresh install? Follow these steps:</p>
+        <ol style="margin:0; padding-left:18px; line-height:1.6; font-size: 12px;">
+          <li>Sync your RSMS <strong>Marks</strong> page.</li>
+          <li>Click the ⚙️ <strong>gear icon</strong> above.</li>
+          <li>Paste your new Timetable CSV.</li>
+          <li>Sync your <strong>Leave Details</strong> page.</li>
+        </ol>
+      </div>`;
     return;
   }
   container.innerHTML = subjects.map(s => {

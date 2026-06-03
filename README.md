@@ -1,42 +1,54 @@
 # Haajar (ഹാജർ) 📊
 
-A privacy-first browser extension for the Rajagiri Students' Management System (RSMS). Haajar helps students calculate subject-wise attendance percentages, simulate the impact of future leaves, and map out exactly how many classes they need to attend to stay above the 75% baseline. 
+<div align="center">
+  <em>A privacy-first, zero-backend Chrome/Edge extension for academic attendance tracking and leave forecasting on the RSMS portal.</em><br>
+  <em>Empowering students with data-driven insights to maintain academic compliance.</em>
+</div>
 
-All data is stored locally using `chrome.storage.local`—no external databases, no logins, and zero privacy risks[cite: 1].
+---
 
-## 🛠️ Current Status: Developer Handoff
-**The Core Bug (Why everything shows 100%):** 
-The extension successfully scrapes absence records and generates a timetable, but fails to map them together. 
-* **The Cause:** The timetable UI uses shorthand text (like `DC` or `PROJECT`), but the RSMS Leave Details page logs absences using strict alphanumeric codes (like `CS800A` and `CS822U`)[cite: 1, 2]. 
-* **The Result:** Because `DC` !== `CS800A`, the logic assumes there are 0 cuts for `DC`, leaving attendance at a default 100%. 
-* **The Fix Needed:** The timetable input grid needs to enforce matching against the scraped `subjectCatalog` so the records correctly sync.
+## 📖 The Backstory
+Balancing rigorous coursework with extracurricular activities—like hackathons, placement drives, tech fests, and internships—requires careful time management. 
+
+While the Rajagiri Students' Management System (RSMS) efficiently logs data, manually calculating the impact of future duty leaves, medical absences, or unexpected college closures on your overall attendance percentage is a complex, manual task. Between massive elective blocks, Honours courses, public holidays, and dynamic timetable shifts, forecasting attendance health is difficult.
+
+I wanted a tool that solved this tangible problem using local data without requiring logins, backend databases, or privacy risks. Built with a focus on seamless automation, **Haajar** sits in your browser, parses your RSMS grid, performs the calculations locally, and provides a clear, mathematical overview of your academic standing so you can plan your semester responsibly.
 
 ## ✨ Features
-* **Zero-Knowledge Architecture:** Runs entirely in the browser. Scanner only executes on demand when "Sync" is pressed[cite: 1].
-* **Smart Parsing:** Decodes the color-coded RSMS leave grid (Leave, Approved Leave, Duty Leave)[cite: 1].
-* **Bunk Simulator:** Pick future dates to see how taking days off will impact specific subject percentages[cite: 1].
-* **Recovery Guidance:** Calculates the exact "Safe Buffer" of classes you can miss, or the exact number you must attend to recover[cite: 1].
 
-## 🚀 How to Install for Development
-1. Clone this repository.
-2. Open Chrome or Edge and navigate to `chrome://extensions/` or `edge://extensions/`[cite: 1].
-3. Enable **Developer mode** in the top right[cite: 1].
-4. Click **Load unpacked** and select the `Haajar` folder[cite: 1].
+* **Zero-Knowledge Architecture:** Runs entirely in your browser using `chrome.storage.local`. No external databases, no API keys, and absolutely zero privacy risks. Your data never leaves your local machine.
+* **Leave Impact Simulator:** Select dates for upcoming tech fests, medical leaves, or personal emergencies, and the app will simulate exactly how those absences will impact your subject-wise compliance targets.
+* **Smart RSMS Parsing:** Automatically decodes the color-coded RSMS Leave Details grid (Leave, Approved Leave, Duty Leave) and your Marks pages to dynamically build your subject catalog.
+* **Compliance Buffer Calculator:** Tells you the exact mathematical buffer you have above the 75% mandate, and provides recovery targets if you fall short.
+* **"Saturday Swap" Engine:** Built-in override system to seamlessly handle special academic working days and college holidays.
+* **Native College UI:** Designed with the official institutional color palette (Maroon & Orange) for a seamless, professional user experience.
 
-## 🧪 Testing Protocol
-Since the extension requires an RSMS portal, test it using historical data.
+## 🚀 How to Install (Developer Mode)
 
-1. **Profile Sync:** Open an old RSMS **Marks/Internal Exam** page and press **Sync** to capture the class code and subject catalog[cite: 1].
-2. **Timetable Setup:** Go to the extension's Setup tab. Paste the Master CSV below into the bulk import box and click **Import**[cite: 1].
-3. **Leave Sync:** Open the historical RSMS **Leave Details** page and press **Sync**[cite: 1].
-4. Check the Dashboard to verify calculations. 
+Since this is an unpacked extension, you can install it locally in seconds:
 
-### S8 Master CSV for Testing
-Use this CSV block to quickly populate the timetable for testing[cite: 1]. Replace the `_CODE` placeholders with exact RSMS alphanumeric codes to test the mapping fix:
+1. Download or clone this repository.
+2. Open Chrome or Edge and navigate to `chrome://extensions/` (or `edge://extensions/`).
+3. Turn on **Developer mode** (usually a toggle in the top right corner).
+4. Click **Load unpacked** and select the `Haajar` folder.
+5. Pin the extension to your toolbar.
 
-```csv
-Monday, COMPREHENSIVE_CODE, CS822U, ELECTIVE_4_CODE, CS800A, ELECTIVE_5_CODE, ELECTIVE_5_CODE, 
-Tuesday, COMPREHENSIVE_CODE, CS800A, CS822U, ELECTIVE_3_CODE, CS822U, CS822U, 
-Wednesday, CS822U, CS800A, CS822U, ELECTIVE_3_CODE, ELECTIVE_4_CODE, ELECTIVE_5_CODE, 
-Thursday, ELECTIVE_5_CODE, CS800A, CS822U, ELECTIVE_3_CODE, ELECTIVE_4_CODE, MENTORING, 
-Friday, ELECTIVE_5_CODE, CS800A, CS822U, HONORS_CODE, ELECTIVE_3_CODE, ELECTIVE_5_CODE, CS822U
+## 🛠️ Setup Guide
+
+You only need to configure this once per semester:
+
+1. **Sync your Subjects:** Open your RSMS **Marks/Internal Exam** page and click the Haajar extension. Press **Sync**. This grabs your specific enrolled subjects.
+2. **Map the Timetable:** Click the ⚙️ Gear icon in the popup to open the Full-Page Setup. Paste your batch's Master Timetable CSV. 
+3. **Lock in Electives:** Any elective or honors slots will be highlighted. Click them and select your exact enrolled course code from the native dropdown. 
+4. **Sync your Leaves:** Open your RSMS **Leave Details** page and press **Sync** one last time. 
+
+From now on, just click the extension to view your live, mathematically accurate attendance dashboard.
+
+## 🧑‍💻 Tech Stack
+* **Frontend:** HTML, CSS (Vanilla, utilizing modern CSS Grid/Flexbox architectures)
+* **Logic:** Vanilla JavaScript (ES6+)
+* **Browser API:** Manifest V3, `chrome.storage.local`, `chrome.scripting`
+* **Data Flow:** Idempotent DOM scraping algorithms (No Webpack/Bundlers required for lightweight performance)
+
+---
+*Built to simplify academic data management and help students plan smarter.*

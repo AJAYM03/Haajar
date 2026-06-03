@@ -23,17 +23,9 @@ function bindEvents() {
 
 
   document.getElementById("exportStateButton").addEventListener("click", () => {
-  const dataStr = JSON.stringify(appState, null, 2);
-  const blob = new Blob([dataStr], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `attendance-copilot-diagnostics-${new Date().toISOString().split('T')[0]}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-});
+    exportBackup();
+  });
+  document.getElementById("importStateFile").addEventListener("change", importBackup);
   document.querySelectorAll(".tab").forEach((tab) => {
     tab.addEventListener("click", () => switchView(tab.dataset.view));
   });
@@ -184,16 +176,29 @@ function saveSettings(event) {
 
 function saveTimetable() {
   const settings = getCurrentSettings();
+  const catalog = getCurrentClassProfile()?.subjectCatalog || {};
+  const unmatched = [];
   const nextTimetable = settings.timetable.map((day) => ({
     ...day,
     slots: day.slots.map((slot) => {
       const input = document.querySelector(`[data-day="${day.day}"][data-hour="${slot.hour}"]`);
-      return { ...slot, subject: normalizeSubject(input.value) };
+      const subject = resolveSubjectInput(input.value, catalog);
+      input.classList.toggle("is-unmatched", Boolean(input.value.trim()) && !subject);
+      if (input.value.trim() && !subject) unmatched.push(`${day.day} hour ${slot.hour}: ${input.value.trim()}`);
+      return { ...slot, subject };
     })
   }));
 
+  if (unmatched.length) {
+    setTimetableStatus(`Timetable has ${unmatched.length} unmatched subject entr${unmatched.length === 1 ? "y" : "ies"}. Sync subjects first or use exact RSMS codes.`, "error");
+    return;
+  }
+
   settings.timetable = nextTimetable;
-  saveState(appState).then(render);
+  saveState(appState).then(() => {
+    render();
+    setTimetableStatus("Timetable saved with synced subject codes.", "success");
+  });
 }
 
 function importBulkTimetable() {
@@ -205,6 +210,8 @@ function importBulkTimetable() {
   if (!rows.length) return;
 
   const settings = getCurrentSettings();
+  const catalog = getCurrentClassProfile()?.subjectCatalog || {};
+  const unmatched = [];
   rows.forEach((line) => {
     const parts = line.split(/,|\t|\|/).map((part) => part.trim());
     const dayName = normalizeDayName(parts.shift());
@@ -213,9 +220,15 @@ function importBulkTimetable() {
 
     day.slots = day.slots.map((slot, index) => ({
       ...slot,
-      subject: normalizeSubject(parts[index] || "")
+      subject: resolveSubjectInput(parts[index] || "", catalog) || trackUnmatchedSubject(parts[index], day.day, slot.hour, unmatched)
     }));
   });
+
+  if (unmatched.length) {
+    setTimetableStatus(`Imported rows, but ${unmatched.length} slot${unmatched.length === 1 ? "" : "s"} need exact subject codes.`, "error");
+  } else {
+    setTimetableStatus("Timetable rows imported.", "success");
+  }
 
   input.value = "";
   saveState(appState).then(render);
@@ -250,6 +263,48 @@ function importManualRecords() {
   appState.records = mergeRecords(appState.records, rows);
   document.getElementById("manualRecords").value = "";
   saveState(appState).then(render);
+}
+
+function exportBackup() {
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    app: "attendance-copilot",
+    version: 1,
+    state: normalizeState(appState)
+  };
+  const dataStr = JSON.stringify(payload, null, 2);
+  const blob = new Blob([dataStr], { type: "application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `attendance-copilot-backup-${new Date().toISOString().split("T")[0]}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  setBackupStatus("Backup exported.", "success");
+}
+
+async function importBackup(event) {
+  const file = event.target.files?.[0];
+  if (!file) return;
+
+  try {
+    const imported = JSON.parse(await file.text());
+    const state = imported.state || imported;
+    if (!isBackupState(state)) {
+      throw new Error("This does not look like an Attendance Copilot backup.");
+    }
+    const normalized = normalizeState(state);
+    appState = normalized;
+    await saveState(appState);
+    render();
+    setBackupStatus("Backup imported.", "success");
+  } catch (error) {
+    setBackupStatus(error?.message || "Could not import backup.", "error");
+  } finally {
+    event.target.value = "";
+  }
 }
 
 function clearRecords() {
@@ -343,7 +398,7 @@ function renderTimetable() {
   // Generate options for the dropdown based on synced subjects
   const subjectOptions = Object.keys(catalog).map((code) => {
     const name = catalog[code].name || code;
-    return `<option value="${escapeHtml(code)}">${escapeHtml(name)}</option>`;
+    return `<option value="${escapeHtml(code)}">${escapeHtml(name)} (${escapeHtml(code)})</option>`;
   }).join("");
 
   const editor = document.getElementById("timetableEditor");
@@ -541,6 +596,29 @@ function mergeRecords(existing, incoming) {
     });
   });
   return [...map.values()];
+}
+
+function resolveSubjectInput(input, catalog = {}) {
+  const text = String(input || "").trim();
+  if (!text) return "";
+
+  const normalized = normalizeSubject(text);
+  if (!Object.keys(catalog).length) return normalized;
+  if (catalog[normalized]) return normalized;
+
+  const lower = text.toLowerCase();
+  const match = Object.entries(catalog).find(([code, subject]) => {
+    const name = typeof subject === "string" ? subject : subject?.name;
+    return code.toLowerCase() === lower || name?.toLowerCase() === lower;
+  });
+
+  return match ? match[0] : "";
+}
+
+function trackUnmatchedSubject(input, day, hour, unmatched) {
+  const value = String(input || "").trim();
+  if (value) unmatched.push(`${day} hour ${hour}: ${value}`);
+  return value ? normalizeSubject(value) : "";
 }
 
 function replacePortalRecordsForClass(existing, incoming, classCode) {
@@ -785,4 +863,32 @@ function normalizeSubjectCatalog(catalog) {
 
 async function saveState(state) {
   await chrome.storage.local.set({ [STORAGE_KEY]: state });
+}
+
+function setBackupStatus(message, type = "") {
+  const element = document.getElementById("backupStatus");
+  if (!element) return;
+  element.textContent = message || "";
+  element.className = ["inline-status", message ? "is-visible" : "", type ? `is-${type}` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function setTimetableStatus(message, type = "") {
+  const element = document.getElementById("timetableStatus");
+  if (!element) return;
+  element.textContent = message || "";
+  element.className = ["inline-status", message ? "is-visible" : "", type ? `is-${type}` : ""]
+    .filter(Boolean)
+    .join(" ");
+}
+
+function isBackupState(state) {
+  return Boolean(state && typeof state === "object" && (
+    Array.isArray(state.records) ||
+    state.settings ||
+    state.classes ||
+    state.subjectCatalog ||
+    state.classInfo
+  ));
 }

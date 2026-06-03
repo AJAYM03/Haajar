@@ -99,6 +99,7 @@
           </label>
           <button id="importTimetableButton" type="button">Import Timetable Rows</button>
           <div id="timetableEditor" class="timetable"></div>
+          <div id="timetableStatus" class="inline-status" role="status" aria-live="polite"></div>
           <button id="saveTimetableButton" class="primary" type="button">Save Timetable</button>
         </section>
 
@@ -114,10 +115,15 @@
 
         <section class="panel">
           <div class="section-title">
-            <h2>Diagnostic Tools</h2>
+            <h2>Backup</h2>
           </div>
-          <p class="hint" style="margin-bottom: 10px;">If the extension breaks or calculates incorrectly, download your state and send it to the developer for debugging.</p>
-          <button id="exportStateButton" type="button" style="width: 100%;">Download Diagnostic Data</button>
+          <p class="hint">Export all local classes, timetable rows, windows, holidays, and attendance records before switching devices or clearing browser data.</p>
+          <div class="backup-actions">
+            <button id="exportStateButton" type="button">Export Backup</button>
+            <label class="file-button" for="importStateFile">Import Backup</label>
+            <input id="importStateFile" type="file" accept="application/json,.json">
+          </div>
+          <div id="backupStatus" class="inline-status" role="status" aria-live="polite"></div>
         </section>
 
       </section>

@@ -42,7 +42,8 @@ button {
   cursor: pointer;
 }
 
-button:hover {
+button:hover,
+.file-button:hover {
   border-color: var(--accent);
 }
 
@@ -336,8 +337,65 @@ textarea {
   text-align: center;
 }
 
+.slot-input.is-unmatched {
+  border-color: #f0b8b2;
+  background: #fff4f2;
+}
+
 .empty {
   padding: 20px 12px;
   color: var(--muted);
   text-align: center;
+}
+
+.backup-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-top: 10px;
+}
+
+.file-button {
+  display: grid;
+  min-height: 36px;
+  margin: 0;
+  place-items: center;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel);
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 400;
+}
+
+#importStateFile {
+  display: none;
+}
+
+.inline-status {
+  display: none;
+  margin-top: 10px;
+  padding: 9px 10px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #f9faf8;
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.inline-status.is-visible {
+  display: block;
+}
+
+.inline-status.is-error {
+  border-color: #f0b8b2;
+  background: #fff4f2;
+  color: var(--danger);
+}
+
+.inline-status.is-success {
+  border-color: #a6d8bf;
+  background: #f0fff6;
+  color: var(--safe);
 }

@@ -38,11 +38,17 @@ Since this is an unpacked extension, you can install it locally in seconds:
 You only need to configure this once per semester:
 
 1. **Sync your Subjects:** Open your RSMS **Marks/Internal Exam** page and click the Haajar extension. Press **Sync**. This grabs your specific enrolled subjects.
-2. **Map the Timetable:** Click the ⚙️ Gear icon in the popup to open the Full-Page Setup. Paste your batch's Master Timetable CSV. 
-3. **Lock in Electives:** Any elective or honors slots will be highlighted. Click them and select your exact enrolled course code from the native dropdown. 
+2. **Map the Timetable:** Click the ⚙️ Gear icon in the popup to open the Full-Page Setup. Paste your batch's Master Timetable CSV *(Pro-tip: Your Class Rep can generate one Master CSV for the entire batch to copy-paste)*. 
+3. **Lock in Electives:** Any generic elective or honours slots will be highlighted in yellow. Click them and select your exact enrolled course code from the dropdown. *(Note: Semesters before S6 generally don't have major electives, making setup even faster, though you'll still map specific Honours/Minors/Remedial codes here).*
 4. **Sync your Leaves:** Open your RSMS **Leave Details** page and press **Sync** one last time. 
 
 From now on, just click the extension to view your live, mathematically accurate attendance dashboard.
+
+## ⚠️ Issues & Limitations
+
+* **The CSV Requirement:** Why not auto-scrape the timetable from the portal? Because official timetables often list generic blocks (like `ELECTIVE 3`). A pure auto-scraper wouldn't know which specific subject you opted for. The CSV + Dropdown method is slightly more manual upfront, but it ensures your attendance math is 100% mathematically flawless by forcing explicit course mapping.
+* **Scraper Brittleness:** The `content.js` script relies on the specific DOM structure and hex colors of the current RSMS portal. If the college IT department pushes a major UI update or changes the "Leave" color code, the extension will temporarily fail to read data until a developer updates the regex/color variables in the code.
+* **Browser-Bound Storage:** Because Haajar has no backend database to protect your privacy, data is bound to your specific browser profile. If you uninstall the extension or clear your browser's core profile data, your attendance tracking will reset. **Solution:** Use the *Export Diagnostic File* button in the Setup tab to periodically back up your JSON data locally.
 
 ## 🧑‍💻 Tech Stack
 * **Frontend:** HTML, CSS (Vanilla, utilizing modern CSS Grid/Flexbox architectures)

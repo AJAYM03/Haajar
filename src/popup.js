@@ -183,17 +183,66 @@ function renderSubjectCards(container, subjects, suffix = "") {
 function calculateSubjects(extraRecords = []) {
   const active = getActiveWindow();
   if (!active.start || !active.end) return [];
-  const occurrences = generateOccurrences(active.start, active.end);
+  
+  // --- TIMELINE LOGIC ---
+  const today = toIso(new Date());
+  let effectiveEnd = active.end;
+  
+  if (extraRecords.length === 0 && today < active.end) {
+    effectiveEnd = today;
+  } else if (extraRecords.length > 0) {
+    const maxSimDate = extraRecords.reduce((max, r) => r.date > max ? r.date : max, today);
+    effectiveEnd = (maxSimDate < active.end) ? maxSimDate : active.end;
+  }
+  
+  // 1. Generate the baseline timetable and grab synced records
+  const occurrences = generateOccurrences(active.start, effectiveEnd);
   const records = mergeRecords(getCurrentClassRecords(), extraRecords);
   const recordMap = new Map(records.map(r => [recordKey(r), r]));
   const grouped = new Map();
+  
+  // 2. Process the baseline timetable
   occurrences.forEach(o => {
+    const rKey = recordKey(o);
     if (!grouped.has(o.subject)) grouped.set(o.subject, { name: o.subject, conducted: 0, attended: 0, target: active.target });
+    
     const sub = grouped.get(o.subject);
-    sub.conducted += 1;
-    sub.attended += isPositiveRecord(recordMap.get(recordKey(o))) ? 1 : 0;
+    
+    // Check if the RSMS portal has a specific record for this normal class
+    if (recordMap.has(rKey)) {
+      const actualRecord = recordMap.get(rKey);
+      sub.conducted += 1;
+      sub.attended += isPositiveRecord(actualRecord) ? 1 : 0;
+      actualRecord._processed = true; // Mark as handled
+    } else {
+      // No record means perfect attendance for this slot
+      sub.conducted += 1;
+      sub.attended += 1;
+    }
   });
-  return [...grouped.values()].map(s => ({ ...s, displayName: subjectDisplayName(s.name), kind: subjectKind(s.name), percentage: s.conducted ? Math.round((s.attended / s.conducted) * 100) : 100, safeBuffer: calculateSafeBuffer(s.attended, s.conducted, s.target), recovery: calculateRecovery(s.attended, s.conducted, s.target) })).sort((a, b) => a.percentage - b.percentage || a.name.localeCompare(b.name));
+  
+  // 3. THE FIX: The "Source of Truth" Sweep
+  // Process any unexpected/extra classes recorded in RSMS that weren't on the timetable
+  records.forEach(r => {
+    if (r.date >= active.start && r.date <= effectiveEnd && !r._processed) {
+      if (!grouped.has(r.subject)) grouped.set(r.subject, { name: r.subject, conducted: 0, attended: 0, target: active.target });
+      const sub = grouped.get(r.subject);
+      
+      // Add the unexpected class to the total math
+      sub.conducted += 1;
+      sub.attended += isPositiveRecord(r) ? 1 : 0; 
+    }
+  });
+  
+  // 4. Return the calculated data
+  return [...grouped.values()].map(s => ({ 
+    ...s, 
+    displayName: subjectDisplayName(s.name), 
+    kind: subjectKind(s.name), 
+    percentage: s.conducted ? Math.round((s.attended / s.conducted) * 100) : 100, 
+    safeBuffer: calculateSafeBuffer(s.attended, s.conducted, s.target), 
+    recovery: calculateRecovery(s.attended, s.conducted, s.target) 
+  })).sort((a, b) => a.percentage - b.percentage || a.name.localeCompare(b.name));
 }
 
 function generateOccurrences(start, end) {

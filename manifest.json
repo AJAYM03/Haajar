@@ -4,17 +4,17 @@
   "description": "Zero-backend RSMS attendance tracker, leave simulator, and safe-buffer calculator.",
   "version": "1.0.0",
   "icons": {
-    "16": "assets/icon16.png",
-    "48": "assets/icon48.png",
-    "128": "assets/icon128.png"
+    "16": "assets/Haajar_Logo.png",
+    "48": "assets/Haajar_Logo.png",
+    "128": "assets/Haajar_Logo.png"
   },
   "action": {
     "default_title": "Haajar",
     "default_popup": "src/popup.html",
     "default_icon": {
-      "16": "assets/icon16.png",
-      "48": "assets/icon48.png",
-      "128": "assets/icon128.png"
+      "16": "assets/Haajar_Logo.png",
+      "48": "assets/Haajar_Logo.png",
+      "128": "assets/Haajar_Logo.png"
     }
   },
   "permissions": [

@@ -246,10 +246,9 @@
     }).map(r => ({ date: r.date?.iso || r.date, hour: r.hour || null, subject: normalizeSubject(r.subject), status: r.status.value || r.status, source: r.source || "portal" }));
   }
 
-
-  // --- V2.0 FLOATING SYNC BUTTON ---
+// --- V2.0 FLOATING SYNC BUTTON (IMMORTAL) ---
   function injectFloatingButton() {
-    // Only inject if we are on an RSMS page and haven't injected already
+    // Only inject if we are on an RSMS page and the button doesn't exist yet
     if (document.getElementById("haajar-sync-btn") || !isLikelyRsmsPage()) return;
     
     const btn = document.createElement("button");
@@ -289,11 +288,17 @@
     document.body.appendChild(btn);
   }
 
-  // Auto-inject when the RSMS page loads
-  if (document.readyState === "loading") {
-    document.addEventListener("DOMContentLoaded", injectFloatingButton);
-  } else {
-    injectFloatingButton();
-  }
+  // 1. Try to inject immediately
+  injectFloatingButton();
+
+  // 2. The Security Guard: Watch for dynamic page reloads and put the button back
+  const observer = new MutationObserver(() => {
+    if (!document.getElementById("haajar-sync-btn") && isLikelyRsmsPage()) {
+      injectFloatingButton();
+    }
+  });
   
+  // Start observing the body for any HTML changes
+  observer.observe(document.body, { childList: true, subtree: true });
+
 })();

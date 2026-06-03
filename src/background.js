@@ -38,9 +38,9 @@ async function handleBackgroundSync(res) {
     const existing = appState.records || [];
     const preserved = existing.filter(r => !(r.classCode === classCode && (r.source === "rsms-leave-grid" || r.source === "portal")));
     
-    // Deduplicate and merge
+    // Deduplicate and merge (Manual 'preserved' records OVERWRITE portal 'scannedRecords')
     const map = new Map();
-    [...preserved, ...scannedRecords].forEach(r => map.set([r.classCode, r.date, r.hour, r.subject].join("|"), r));
+    [...scannedRecords, ...preserved].forEach(r => map.set([r.classCode, r.date, r.hour, r.subject].join("|"), r));
     appState.records = [...map.values()];
     
   }

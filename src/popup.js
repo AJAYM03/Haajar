@@ -101,9 +101,15 @@ function setSyncStatus(msg, type = "") {
 function toSyncErrorMessage(error) { return error?.message || String(error); }
 function syncSuccessMessage(res) {
   const subj = Object.keys(res.subjectCatalog || {}).length;
+  const hols = res.holidays?.length || 0;
   const label = res.classInfo?.label ? ` for ${res.classInfo.label}` : "";
+
   if (res.records.length && subj) return `Imported ${res.records.length} records and ${subj} subjects${label}.`;
   if (res.records.length) return `Imported ${res.records.length} records${label}.`;
+  
+  // ADDED: The Calendar Check
+  if (hols > 0 && subj === 0 && res.records.length === 0) return `Synced ${hols} holidays from calendar.`;
+  
   return `Synced ${subj} subjects${label}.`;
 }
 

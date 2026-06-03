@@ -245,4 +245,55 @@
       seen.add(key); return true;
     }).map(r => ({ date: r.date?.iso || r.date, hour: r.hour || null, subject: normalizeSubject(r.subject), status: r.status.value || r.status, source: r.source || "portal" }));
   }
+
+
+  // --- V2.0 FLOATING SYNC BUTTON ---
+  function injectFloatingButton() {
+    // Only inject if we are on an RSMS page and haven't injected already
+    if (document.getElementById("haajar-sync-btn") || !isLikelyRsmsPage()) return;
+    
+    const btn = document.createElement("button");
+    btn.id = "haajar-sync-btn";
+    btn.innerHTML = "📊 Sync to Haajar";
+    Object.assign(btn.style, {
+      position: "fixed", bottom: "24px", right: "24px", zIndex: "999999",
+      padding: "12px 20px", background: "#e86a22", color: "white",
+      border: "none", borderRadius: "8px", fontWeight: "700",
+      boxShadow: "0 8px 24px rgba(71, 25, 36, 0.2)", cursor: "pointer",
+      fontFamily: "system-ui, sans-serif", fontSize: "14px", transition: "all 0.2s"
+    });
+    
+    btn.addEventListener("mouseover", () => btn.style.background = "#c85a1a");
+    btn.addEventListener("mouseout", () => btn.style.background = "#e86a22");
+    
+    btn.addEventListener("click", () => {
+      btn.innerHTML = "⏳ Syncing...";
+      btn.style.background = "#c85a1a";
+      
+      const res = window.AttendanceCopilotScanner.scan();
+      if (!res.ok) {
+        btn.innerHTML = "❌ Failed";
+        btn.style.background = "#dc3545";
+        setTimeout(() => { btn.innerHTML = "📊 Sync to Haajar"; btn.style.background = "#e86a22"; }, 2000);
+        return;
+      }
+      
+      // Send the scraped data to the background service worker
+      chrome.runtime.sendMessage({ type: "HAAJAR_BG_SYNC", payload: res }, (response) => {
+        btn.innerHTML = response?.success ? `✅ ${response.msg}` : "❌ Error";
+        btn.style.background = response?.success ? "#198754" : "#dc3545";
+        setTimeout(() => { btn.innerHTML = "📊 Sync to Haajar"; btn.style.background = "#e86a22"; }, 2000);
+      });
+    });
+    
+    document.body.appendChild(btn);
+  }
+
+  // Auto-inject when the RSMS page loads
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", injectFloatingButton);
+  } else {
+    injectFloatingButton();
+  }
+  
 })();

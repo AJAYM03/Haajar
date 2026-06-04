@@ -86,8 +86,16 @@
   }
 
   function scanSubjectCatalog() {
+    // THE FIX: The Leave page only has codes, no names. 
+    // If we scrape here, we accidentally grab layout elements like the dropdown menu.
+    const isLeavePage = /leave details/i.test(document.body?.innerText || "") || /leave/i.test(document.title);
+    if (isLeavePage) return {};
+
     const catalog = {};
     [...document.querySelectorAll("tr")].forEach((row) => {
+      // Prevent nested wrapper tables from merging text
+      if (row.closest('table').querySelectorAll('table').length > 0) return; 
+      
       const entry = parseSubjectCatalogRow(row);
       if (entry) catalog[entry.code] = entry;
     });

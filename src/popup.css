@@ -103,12 +103,12 @@ h2 { font-size: 15px; }
 .subject-list { display: grid; gap: 10px; }
 .subject-card { padding: 12px; border-left: 4px solid var(--accent); }
 
-.subject-head, .section-title { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
-.subject-name { max-width: 240px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
-.subject-title { min-width: 0; }
+.subject-head, .section-title { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+.subject-title { display: flex; flex-direction: column; overflow: hidden; flex: 1; }
+.subject-name { width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; }
 .subject-code { display: block; margin-top: 2px; color: var(--muted); font-size: 12px; font-weight: 500; }
+.percentage { font-size: 23px; font-weight: 900; flex-shrink: 0; white-space: nowrap; }
 
-.percentage { font-size: 23px; font-weight: 900; }
 .meter { height: 8px; margin: 10px 0; overflow: hidden; border-radius: 999px; background: #e9ecef; }
 .meter span { display: block; height: 100%; border-radius: inherit; }
 

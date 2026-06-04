@@ -91,8 +91,10 @@ function renderTimetable() {
             <select class="slot-input" data-day="${escapeHtml(day.day)}" data-hour="${slot.hour}">
               <option value="" ${!slot.subject ? "selected" : ""}>- Free -</option>
               ${Object.keys(catalog).map(code => {
-                const dName = catalog[code] ? `${code} - ${catalog[code]}` : code;
-                return `<option value="${escapeHtml(code)}" ${slot.subject === code ? "selected" : ""}>${escapeHtml(dName)}</option>`;
+                const catVal = catalog[code];
+                // Prevent [object Object] in the dropdowns
+                const dName = catVal ? (typeof catVal === 'object' ? catVal.name : catVal) : code;
+                return `<option value="${escapeHtml(code)}" ${slot.subject === code ? "selected" : ""}>${escapeHtml(code + ' - ' + dName)}</option>`;
               }).join("")}
             </select>
           `;
@@ -100,23 +102,6 @@ function renderTimetable() {
       </div>
     </div>
   `).join("");
-}
-
-async function saveTimetable() {
-  if (!appState.activeClassCode) return;
-  const cls = appState.classes[appState.activeClassCode];
-
-  cls.settings.timetable = cls.settings.timetable.map((day) => ({
-    ...day,
-    slots: day.slots.map((slot) => {
-      const input = document.querySelector(`select[data-day="${day.day}"][data-hour="${slot.hour}"]`);
-      return { ...slot, subject: input ? input.value : slot.subject };
-    })
-  }));
-  
-  await saveState(appState);
-  alert("Manual Timetable Changes Saved!");
-  render();
 }
 
 // --- THE SMART PARSER ---
@@ -136,8 +121,11 @@ async function importCSV() {
     
     if (type === 'CLASSCODE' && parts.length >= 2) activeCode = parts[1];
     else if (type === 'MAPPING' && parts.length >= 4) {
-      aliases[parts[1]] = parts[2].toUpperCase();
-      if (parts[2].toUpperCase() !== 'FREE') catalog[parts[2].toUpperCase()] = parts.slice(3).join(',').trim();
+      aliases[parts[1].toUpperCase()] = parts[2].toUpperCase();
+      if (parts[2].toUpperCase() !== 'FREE') {
+        // Fix: Store as an object to match the content.js scraper
+        catalog[parts[2].toUpperCase()] = { name: parts.slice(3).join(',').trim() };
+      }
     }
     else if (type === 'HOLIDAY' && parts.length >= 2) holidays.push(parts[1]);
     else if (type === 'SPECIAL' && parts.length >= 3) specialDays[parts[1]] = parts[2];
@@ -163,14 +151,16 @@ async function importCSV() {
 
   appState.activeClassCode = activeCode;
   if (!appState.classes[activeCode]) {
-    appState.classes[activeCode] = { classInfo: { classCode: activeCode }, records: [], manualRecords: [], settings: { windows: { semester: { target: 75 } }, holidays: [], specialDays: {} } };
+    appState.classes[activeCode] = { classInfo: { classCode: activeCode }, records: [], manualRecords: [], settings: { windows: { semester: { target: 75 } }, holidays: [], specialDays: {}, aliases: {} } };
   }
   
   appState.classes[activeCode].subjectCatalog = catalog;
   appState.classes[activeCode].settings.holidays = holidays;
   appState.classes[activeCode].settings.specialDays = specialDays;
-  appState.classes[activeCode].settings.timetable = ['Monday','Tuesday','Wednesday','Thursday','Friday'].map(day => ({
-    day, slots: timetableMap[day] || Array.from({length:7}, (_,i)=>({hour:i+1, subject:""}))
+  appState.classes[activeCode].settings.aliases = aliases; // FIX: Save aliases so the Math Engine can use them!
+  appState.classes[activeCode].settings.timetable = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'].map(day => ({
+    day: day.charAt(0) + day.slice(1).toLowerCase(), 
+    slots: timetableMap[day] || Array.from({length:7}, (_,i)=>({hour:i+1, subject:""}))
   }));
 
   await saveState(appState);
@@ -178,6 +168,25 @@ async function importCSV() {
   alert(`Setup Saved for ${activeCode}! The visual grid has been generated.`);
   render();
 }
+
+async function saveTimetable() {
+  if (!appState.activeClassCode) return;
+  const cls = appState.classes[appState.activeClassCode];
+
+  cls.settings.timetable = cls.settings.timetable.map((day) => ({
+    ...day,
+    slots: day.slots.map((slot) => {
+      const input = document.querySelector(`select[data-day="${day.day}"][data-hour="${slot.hour}"]`);
+      return { ...slot, subject: input ? input.value : slot.subject };
+    })
+  }));
+  
+  await saveState(appState);
+  alert("Manual Timetable Changes Saved!");
+  render();
+}
+
+
 
 // --- SAVE THE WINDOW SETTINGS ---
 async function saveDates() {

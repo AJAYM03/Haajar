@@ -131,7 +131,7 @@ function calculateSubjects(extraRecords = []) {
   const target = win.target || 75;
   if (!start || !end) return [];
 
-  // TIMELINE LOGIC: Dynamic Expansion for future manual records
+  // TIMELINE LOGIC
   const today = new Date().toISOString().split('T')[0];
   let effectiveEnd = end;
   
@@ -142,15 +142,14 @@ function calculateSubjects(extraRecords = []) {
     effectiveEnd = (maxRecordDate < end) ? maxRecordDate : end;
   }
 
-  // 1. Create the Master Time-Slot Map
-  const timeSlotMap = new Map(); // Key: "YYYY-MM-DD|Hour" -> Value: { subject, attended }
+  // 1. Create Time-Slot Map
+  const timeSlotMap = new Map(); 
   const holidays = new Set(cls.settings.holidays || []);
   const specialDays = cls.settings.specialDays || {};
   
   let d = new Date(`${start}T00:00:00`);
   const e = new Date(`${effectiveEnd}T00:00:00`);
   
-  // 2. Fill Time-Slot Map with the Baseline Timetable
   while (d <= e) {
     const dateStr = d.toISOString().split('T')[0];
     if (!holidays.has(dateStr)) {
@@ -158,53 +157,54 @@ function calculateSubjects(extraRecords = []) {
       const daySchedule = cls.settings.timetable.find(t => t.day === dayName);
       if (daySchedule) {
         daySchedule.slots.forEach(slot => {
-          if (slot.subject) {
-            timeSlotMap.set(`${dateStr}|${slot.hour}`, {
-              subject: String(slot.subject).toUpperCase(),
-              attended: true // Innocent until proven absent
-            });
-          }
+          if (slot.subject) timeSlotMap.set(`${dateStr}|${slot.hour}`, { subject: String(slot.subject).toUpperCase(), attended: true });
         });
       }
     }
     d.setDate(d.getDate() + 1);
   }
 
-  // 3. OVERWRITE Time-Slots with RSMS Portal/Manual Records
+  // 2. OVERWRITE with Records (AND TRANSLATE TYPOS)
   const allRecords = [
     ...(appState.records.filter(r => r.classCode === appState.activeClassCode) || []),
     ...(cls.manualRecords || []),
     ...extraRecords
   ];
   
+  const aliases = cls.settings.aliases || {};
+
   allRecords.forEach(r => {
     if (r.date >= start && r.date <= effectiveEnd) {
-      const sCode = String(r.subject).toUpperCase();
+      let sCode = String(r.subject).toUpperCase();
+      
+      // THE TRANSLATION FIX: If the portal logged CS800T, but your CSV mapped CS800T -> CS800A, translate it!
+      if (aliases[sCode]) sCode = aliases[sCode]; 
+
       const s = String(r.status || r.type || "Absent").toLowerCase();
       const isPresent = (s === 'present' || s.includes('duty') || s === 'od' || s === 'approved leave');
       
-      // THE FIX: This single line prevents double-counting.
-      // If RSMS logs CS822U for an hour that was supposed to be CS822H, it destroys CS822H!
-      timeSlotMap.set(`${r.date}|${r.hour}`, {
-        subject: sCode,
-        attended: isPresent
-      });
+      timeSlotMap.set(`${r.date}|${r.hour}`, { subject: sCode, attended: isPresent });
     }
   });
 
-  // 4. Tally the Final Results
+  // 3. Tally Final Results
   const grouped = new Map();
   timeSlotMap.forEach((data, key) => {
     const { subject, attended } = data;
+    
+    // THE [object Object] FIX: Robust name resolution
+    let catVal = cls.subjectCatalog[subject];
+    let resolvedName = (typeof catVal === 'object' && catVal !== null) ? (catVal.name || subject) : (catVal || subject);
+
     if (!grouped.has(subject)) {
-      grouped.set(subject, { code: subject, name: cls.subjectCatalog[subject] || subject, conducted: 0, attended: 0, target });
+      grouped.set(subject, { code: subject, name: resolvedName, conducted: 0, attended: 0, target });
     }
     const sub = grouped.get(subject);
     sub.conducted += 1;
     sub.attended += attended ? 1 : 0;
   });
 
-  // 5. Calculate Safe Buffers
+  // 4. Calculate Safe Buffers
   return [...grouped.values()].map(s => {
     const percentage = s.conducted ? Math.round((s.attended / s.conducted) * 100) : 100;
     let buffer = 0;

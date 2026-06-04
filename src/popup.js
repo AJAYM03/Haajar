@@ -86,10 +86,16 @@ function render() {
     return;
   }
 
+  // ... inside render() ...
   const cls = appState.classes[activeCode];
-  document.getElementById("targetLabel").textContent = `${cls.settings.windows.semester.target || 75}%`;
+  const activeWinKey = cls.settings.activeWindow || "semester";
+  const win = cls.settings.windows[activeWinKey] || { target: 75 };
+  const winNames = { internal1: "Internal 1", internal2: "Internal 2", semester: "Semester" };
+
+  document.getElementById("windowNameLabel").textContent = `${winNames[activeWinKey]} View`;
+  document.getElementById("targetLabel").textContent = `${win.target}% Target`;
   document.getElementById("recordCount").textContent = String((appState.records || []).filter(r => r.classCode === activeCode).length);
-  document.getElementById("syncMeta").textContent = cls.lastSync ? `${cls.lastSync.imported} records synced` : "No portal sync yet";
+// ...
   
   renderSubjectCards(document.getElementById("subjectList"), calculateSubjects());
 
@@ -116,9 +122,13 @@ function renderSubjectCards(container, subjects, suffix = "") {
 function calculateSubjects(extraRecords = []) {
   const cls = appState.classes[appState.activeClassCode];
   if (!cls) return [];
-  const start = cls.settings.windows.semester.start;
-  const end = cls.settings.windows.semester.end;
-  const target = cls.settings.windows.semester.target || 75;
+  
+  const activeWinKey = cls.settings.activeWindow || "semester";
+  const win = cls.settings.windows[activeWinKey] || {};
+  
+  const start = win.start;
+  const end = win.end;
+  const target = win.target || 75;
   if (!start || !end) return [];
 
   // TIMELINE LOGIC: Dynamic Expansion for future manual records
@@ -132,74 +142,69 @@ function calculateSubjects(extraRecords = []) {
     effectiveEnd = (maxRecordDate < end) ? maxRecordDate : end;
   }
 
-  // 1. Generate Baseline (WITH Saturday Swaps restored!)
-  const occurrences = [];
+  // 1. Create the Master Time-Slot Map
+  const timeSlotMap = new Map(); // Key: "YYYY-MM-DD|Hour" -> Value: { subject, attended }
   const holidays = new Set(cls.settings.holidays || []);
   const specialDays = cls.settings.specialDays || {};
   
   let d = new Date(`${start}T00:00:00`);
   const e = new Date(`${effectiveEnd}T00:00:00`);
   
+  // 2. Fill Time-Slot Map with the Baseline Timetable
   while (d <= e) {
     const dateStr = d.toISOString().split('T')[0];
     if (!holidays.has(dateStr)) {
-      // Check for Special Saturday Timetable mapping
       let dayName = specialDays[dateStr] || d.toLocaleDateString('en-US', { weekday: 'long' });
       const daySchedule = cls.settings.timetable.find(t => t.day === dayName);
       if (daySchedule) {
         daySchedule.slots.forEach(slot => {
-          if (slot.subject) occurrences.push({ date: dateStr, hour: slot.hour, subject: slot.subject });
+          if (slot.subject) {
+            timeSlotMap.set(`${dateStr}|${slot.hour}`, {
+              subject: String(slot.subject).toUpperCase(),
+              attended: true // Innocent until proven absent
+            });
+          }
         });
       }
     }
     d.setDate(d.getDate() + 1);
   }
 
+  // 3. OVERWRITE Time-Slots with RSMS Portal/Manual Records
   const allRecords = [
     ...(appState.records.filter(r => r.classCode === appState.activeClassCode) || []),
     ...(cls.manualRecords || []),
     ...extraRecords
   ];
   
-  const recordMap = new Map();
-  // FORCE UPPERCASE to guarantee matches between RSMS and Manual
-  allRecords.forEach(r => recordMap.set(`${r.date}|${r.hour}|${String(r.subject).toUpperCase()}`, r));
-  const grouped = new Map();
-
-  // 3. Process Baseline
-  occurrences.forEach(o => {
-    const subjectCode = String(o.subject).toUpperCase();
-    const rKey = `${o.date}|${o.hour}|${subjectCode}`;
-    
-    if (!grouped.has(subjectCode)) grouped.set(subjectCode, { code: subjectCode, name: cls.subjectCatalog[subjectCode] || subjectCode, conducted: 0, attended: 0, target });
-    
-    const sub = grouped.get(subjectCode);
-    sub.conducted += 1;
-    
-    if (recordMap.has(rKey)) {
-      const rec = recordMap.get(rKey);
-      const s = String(rec.status || rec.type || "Absent").toLowerCase();
-      sub.attended += (s === 'present' || s.includes('duty') || s === 'od' || s === 'approved leave') ? 1 : 0;
-      rec._processed = true;
-    } else {
-      sub.attended += 1; 
-    }
-  });
-
-  // 4. Source of Truth Sweep (Catch Rogue Classes)
-  Array.from(recordMap.values()).forEach(r => {
-    if (r.date >= start && r.date <= effectiveEnd && !r._processed) {
-      const subjectCode = String(r.subject).toUpperCase();
-      if (!grouped.has(subjectCode)) grouped.set(subjectCode, { code: subjectCode, name: cls.subjectCatalog[subjectCode] || subjectCode, conducted: 0, attended: 0, target });
-      
-      const sub = grouped.get(subjectCode);
-      sub.conducted += 1;
+  allRecords.forEach(r => {
+    if (r.date >= start && r.date <= effectiveEnd) {
+      const sCode = String(r.subject).toUpperCase();
       const s = String(r.status || r.type || "Absent").toLowerCase();
-      sub.attended += (s === 'present' || s.includes('duty') || s === 'od' || s === 'approved leave') ? 1 : 0;
+      const isPresent = (s === 'present' || s.includes('duty') || s === 'od' || s === 'approved leave');
+      
+      // THE FIX: This single line prevents double-counting.
+      // If RSMS logs CS822U for an hour that was supposed to be CS822H, it destroys CS822H!
+      timeSlotMap.set(`${r.date}|${r.hour}`, {
+        subject: sCode,
+        attended: isPresent
+      });
     }
   });
 
-  // 5. Math
+  // 4. Tally the Final Results
+  const grouped = new Map();
+  timeSlotMap.forEach((data, key) => {
+    const { subject, attended } = data;
+    if (!grouped.has(subject)) {
+      grouped.set(subject, { code: subject, name: cls.subjectCatalog[subject] || subject, conducted: 0, attended: 0, target });
+    }
+    const sub = grouped.get(subject);
+    sub.conducted += 1;
+    sub.attended += attended ? 1 : 0;
+  });
+
+  // 5. Calculate Safe Buffers
   return [...grouped.values()].map(s => {
     const percentage = s.conducted ? Math.round((s.attended / s.conducted) * 100) : 100;
     let buffer = 0;
@@ -210,6 +215,7 @@ function calculateSubjects(extraRecords = []) {
     return { ...s, percentage, safeBuffer: buffer >= 0 ? buffer : 0, recovery: recovery > 0 ? `Attend next ${recovery} classes` : "On track" };
   }).sort((a, b) => a.percentage - b.percentage);
 }
+
 
 function generateLeaveRecords(start, end) {
   if (!start || !end) return [];

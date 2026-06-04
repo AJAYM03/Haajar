@@ -5,11 +5,17 @@
   <title>Haajar Setup</title>
   <link rel="stylesheet" href="popup.css">
   <style>
-    body { width: 100%; max-width: 600px; margin: 40px auto; min-height: 100vh; padding: 20px; }
+    body { width: 100%; max-width: 800px; margin: 40px auto; min-height: 100vh; padding: 20px; }
     .app { box-shadow: 0 4px 20px rgba(0,0,0,0.05); padding: 30px; border-radius: 12px; background: white; }
     h2 { font-size: 16px; margin-bottom: 8px; color: var(--maroon); }
     .section { margin-bottom: 24px; padding-bottom: 24px; border-bottom: 1px solid var(--line); }
     .section:last-child { border-bottom: none; margin-bottom: 0; padding-bottom: 0; }
+    .timetable { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; margin-bottom: 12px;}
+    .day-row { padding: 12px; border-bottom: 1px solid var(--line); }
+    .day-row:last-child { border-bottom: none; }
+    .slots { display: grid; grid-template-columns: repeat(7, 1fr); gap: 6px; }
+    select.slot-input { appearance: auto; padding: 8px 4px; text-align: center; font-size: 11px; font-weight: 600; cursor: pointer; border: 1px solid var(--line); border-radius: 6px; width: 100%; background: #fff; transition: all 0.2s; }
+    select.slot-input:hover { border-color: var(--accent); }
   </style>
 </head>
 <body>
@@ -22,32 +28,49 @@
     </header>
 
     <div id="setup" class="view is-active">
+      
       <div class="section">
         <h2>1. Batch Master CSV</h2>
-        <p class="hint" style="margin-bottom: 12px;">Paste the configuration block provided by your Class Rep to instantly build your timetable and mappings.</p>
-        <textarea id="csvText" rows="12" placeholder="CLASSCODE, 2026S8CS-A&#10;MAPPING, ELEC_1, CS803D..."></textarea>
-        <button id="importBtn" class="primary" style="margin-top: 10px; width: 100%;">🚀 Import & Save Setup</button>
+        <p class="hint" style="margin-bottom: 12px;">Paste the configuration block provided by your Class Rep.</p>
+        <textarea id="csvText" rows="6" placeholder="CLASSCODE, 2026S8CS-A&#10;MAPPING, ELEC_1, CS803D..."></textarea>
+        <button id="importBtn" class="primary" style="margin-top: 10px; width: 100%;">🚀 Import CSV Configuration</button>
       </div>
 
       <div class="section">
-        <h2>2. Semester Boundaries</h2>
-        <p class="hint" style="margin-bottom: 12px;">Anchor your timeline for the Safe Buffer calculations.</p>
+        <h2>2. Visual Timetable Editor</h2>
+        <p class="hint" style="margin-bottom: 12px;">Review your schedule below. You can manually tweak your electives using the dropdowns.</p>
+        <div id="timetableEditor" class="timetable"></div>
+        <button id="saveTimetableBtn" class="primary" style="width: 100%;">💾 Save Manual Changes</button>
+      </div>
+
+      <div class="section">
+        <h2>3. Active Window & Boundaries</h2>
+        <div class="grid" style="margin-bottom: 8px;">
+          <label>Current Window
+            <select id="activeWindow" style="font-weight: bold; background: #f8f9fa;">
+              <option value="internal1">Internal 1</option>
+              <option value="internal2">Internal 2</option>
+              <option value="semester">Semester</option>
+            </select>
+          </label>
+          <label>Target %<input type="number" id="windowTarget" min="1" max="100"></label>
+        </div>
         <div class="grid">
           <label>Start date<input type="date" id="startDate"></label>
           <label>End date<input type="date" id="endDate"></label>
         </div>
-        <button id="saveDatesBtn" style="margin-top: 10px; width: 100%;">💾 Save Dates</button>
+        <button id="saveDatesBtn" style="margin-top: 10px; width: 100%;">💾 Save Window Settings</button>
       </div>
 
       <div class="section">
-        <h2>3. Manual Override (God Mode)</h2>
+        <h2>4. Manual Override (God Mode)</h2>
         <p class="hint" style="margin-bottom: 12px;">Fix pending duty leaves instantly. Format: <code>YYYY-MM-DD, Hour, SubjectCode, Status</code></p>
         <textarea id="manualRecords" rows="3" placeholder="2026-01-14, 7, CS822U, Present"></textarea>
         <button id="saveManualBtn" style="background: var(--safe); color: white; border-color: var(--safe); margin-top: 10px; width: 100%;">✅ Inject Manual Records</button>
       </div>
 
       <div class="section">
-        <h2>4. Data Management</h2>
+        <h2>5. Data Management</h2>
         <div class="grid">
           <button id="exportStateBtn">Export Backup</button>
           <button id="importStateBtn">Import Backup</button>

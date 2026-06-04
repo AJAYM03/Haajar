@@ -53,15 +53,15 @@ function render() {
   document.getElementById('manualRecords').value = manualText;
 }
 
-// THE SMART PARSER
 async function importCSV() {
   const csvText = document.getElementById("csvText").value;
   if (!csvText.trim()) return alert("Please paste the CSV text first.");
   
   let activeCode = "Unknown-Semester";
   const aliases = {}, catalog = {}, timetableMap = {};
+  const holidays = [], specialDays = {}; // Added Holiday/Special Arrays
   
-  // PASS 1
+  // PASS 1: Extract data
   csvText.split('\n').forEach(line => {
     if (!line.trim()) return;
     const parts = line.split(',').map(p => p.trim());
@@ -69,12 +69,15 @@ async function importCSV() {
     
     if (type === 'CLASSCODE' && parts.length >= 2) activeCode = parts[1];
     else if (type === 'MAPPING' && parts.length >= 4) {
-      aliases[parts[1]] = parts[2];
-      if (parts[2].toUpperCase() !== 'FREE') catalog[parts[2]] = parts.slice(3).join(',').trim();
+      aliases[parts[1]] = parts[2].toUpperCase();
+      if (parts[2].toUpperCase() !== 'FREE') catalog[parts[2].toUpperCase()] = parts.slice(3).join(',').trim();
     }
+    // Added Zero-Friction Holiday/Saturday Routing
+    else if (type === 'HOLIDAY' && parts.length >= 2) holidays.push(parts[1]);
+    else if (type === 'SPECIAL' && parts.length >= 3) specialDays[parts[1]] = parts[2];
   });
 
-  // PASS 2
+  // PASS 2: Build Grid
   csvText.split('\n').forEach(line => {
     if (!line.trim()) return;
     const parts = line.split(',').map(p => p.trim());
@@ -86,7 +89,7 @@ async function importCSV() {
         let val = parts[i] || "";
         if (aliases[val]) val = aliases[val];
         if (val.toUpperCase() === 'FREE') val = "";
-        slots.push({ hour: i, subject: val });
+        slots.push({ hour: i, subject: val.toUpperCase() }); // Enforce Uppercase
       }
       timetableMap[parts[0]] = slots;
     }
@@ -94,17 +97,19 @@ async function importCSV() {
 
   appState.activeClassCode = activeCode;
   if (!appState.classes[activeCode]) {
-    appState.classes[activeCode] = { classInfo: { classCode: activeCode }, records: [], manualRecords: [], settings: { windows: { semester: { target: 75 } } } };
+    appState.classes[activeCode] = { classInfo: { classCode: activeCode }, records: [], manualRecords: [], settings: { windows: { semester: { target: 75 } }, holidays: [], specialDays: {} } };
   }
   
   appState.classes[activeCode].subjectCatalog = catalog;
+  appState.classes[activeCode].settings.holidays = holidays;
+  appState.classes[activeCode].settings.specialDays = specialDays;
   appState.classes[activeCode].settings.timetable = ['Monday','Tuesday','Wednesday','Thursday','Friday'].map(day => ({
     day, slots: timetableMap[day] || Array.from({length:7}, (_,i)=>({hour:i+1, subject:""}))
   }));
 
   await saveState(appState);
   document.getElementById("csvText").value = "";
-  alert(`Setup Saved for ${activeCode}! You are ready to sync absences.`);
+  alert(`Setup Saved for ${activeCode}!`);
   render();
 }
 
@@ -122,7 +127,8 @@ async function saveManualRecords() {
   const records = [];
   lines.forEach(l => {
     const p = l.split(',').map(x => x.trim());
-    if(p.length >= 4) records.push({ date: p[0], hour: parseInt(p[1]), subject: p[2], type: p[3] });
+    // Enforce Uppercase on subject injection to prevent duplicates
+    if(p.length >= 4) records.push({ date: p[0], hour: parseInt(p[1]), subject: p[2].toUpperCase(), type: p[3] });
   });
   appState.classes[appState.activeClassCode].manualRecords = records;
   await saveState(appState);

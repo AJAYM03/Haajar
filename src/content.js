@@ -19,6 +19,7 @@
           subjectCatalog: scanSubjectCatalog(),
           holidays: holidays,
           pageTitle: document.title,
+          isLeavePage: /leave details/i.test(document.body?.innerText || "") || /leave/i.test(document.title),
           scannedAt: new Date().toISOString()
         };
       } catch (error) { return { ok: false, error: error.message }; }

@@ -121,24 +121,30 @@ function calculateSubjects(extraRecords = []) {
   const target = cls.settings.windows.semester.target || 75;
   if (!start || !end) return [];
 
-  // Timeline Logic
+  // TIMELINE LOGIC: Dynamic Expansion for future manual records
   const today = new Date().toISOString().split('T')[0];
   let effectiveEnd = end;
-  if (extraRecords.length === 0 && today < end) effectiveEnd = today;
-  else if (extraRecords.length > 0) {
-    const maxSimDate = extraRecords.reduce((max, r) => r.date > max ? r.date : max, today);
-    effectiveEnd = (maxSimDate < end) ? maxSimDate : end;
+  
+  const allRelevantRecords = [...(cls.manualRecords || []), ...extraRecords];
+  if (today < end) {
+    let maxRecordDate = today;
+    allRelevantRecords.forEach(r => { if (r.date > maxRecordDate) maxRecordDate = r.date; });
+    effectiveEnd = (maxRecordDate < end) ? maxRecordDate : end;
   }
 
-  // 1. Generate Baseline
+  // 1. Generate Baseline (WITH Saturday Swaps restored!)
   const occurrences = [];
   const holidays = new Set(cls.settings.holidays || []);
+  const specialDays = cls.settings.specialDays || {};
+  
   let d = new Date(`${start}T00:00:00`);
   const e = new Date(`${effectiveEnd}T00:00:00`);
+  
   while (d <= e) {
     const dateStr = d.toISOString().split('T')[0];
     if (!holidays.has(dateStr)) {
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      // Check for Special Saturday Timetable mapping
+      let dayName = specialDays[dateStr] || d.toLocaleDateString('en-US', { weekday: 'long' });
       const daySchedule = cls.settings.timetable.find(t => t.day === dayName);
       if (daySchedule) {
         daySchedule.slots.forEach(slot => {
@@ -149,7 +155,6 @@ function calculateSubjects(extraRecords = []) {
     d.setDate(d.getDate() + 1);
   }
 
-  // 2. Merge Portal Records + Manual Records + Extra(Simulated)
   const allRecords = [
     ...(appState.records.filter(r => r.classCode === appState.activeClassCode) || []),
     ...(cls.manualRecords || []),
@@ -157,15 +162,18 @@ function calculateSubjects(extraRecords = []) {
   ];
   
   const recordMap = new Map();
-  allRecords.forEach(r => recordMap.set(`${r.date}|${r.hour}|${r.subject}`, r));
+  // FORCE UPPERCASE to guarantee matches between RSMS and Manual
+  allRecords.forEach(r => recordMap.set(`${r.date}|${r.hour}|${String(r.subject).toUpperCase()}`, r));
   const grouped = new Map();
 
   // 3. Process Baseline
   occurrences.forEach(o => {
-    const rKey = `${o.date}|${o.hour}|${o.subject}`;
-    if (!grouped.has(o.subject)) grouped.set(o.subject, { code: o.subject, name: cls.subjectCatalog[o.subject] || o.subject, conducted: 0, attended: 0, target });
+    const subjectCode = String(o.subject).toUpperCase();
+    const rKey = `${o.date}|${o.hour}|${subjectCode}`;
     
-    const sub = grouped.get(o.subject);
+    if (!grouped.has(subjectCode)) grouped.set(subjectCode, { code: subjectCode, name: cls.subjectCatalog[subjectCode] || subjectCode, conducted: 0, attended: 0, target });
+    
+    const sub = grouped.get(subjectCode);
     sub.conducted += 1;
     
     if (recordMap.has(rKey)) {
@@ -178,11 +186,13 @@ function calculateSubjects(extraRecords = []) {
     }
   });
 
-  // 4. Source of Truth Sweep
+  // 4. Source of Truth Sweep (Catch Rogue Classes)
   Array.from(recordMap.values()).forEach(r => {
     if (r.date >= start && r.date <= effectiveEnd && !r._processed) {
-      if (!grouped.has(r.subject)) grouped.set(r.subject, { code: r.subject, name: cls.subjectCatalog[r.subject] || r.subject, conducted: 0, attended: 0, target });
-      const sub = grouped.get(r.subject);
+      const subjectCode = String(r.subject).toUpperCase();
+      if (!grouped.has(subjectCode)) grouped.set(subjectCode, { code: subjectCode, name: cls.subjectCatalog[subjectCode] || subjectCode, conducted: 0, attended: 0, target });
+      
+      const sub = grouped.get(subjectCode);
       sub.conducted += 1;
       const s = String(r.status || r.type || "Absent").toLowerCase();
       sub.attended += (s === 'present' || s.includes('duty') || s === 'od' || s === 'approved leave') ? 1 : 0;
@@ -206,12 +216,15 @@ function generateLeaveRecords(start, end) {
   const cls = appState.classes[appState.activeClassCode];
   const sim = [];
   const holidays = new Set(cls.settings.holidays || []);
+  const specialDays = cls.settings.specialDays || {};
+  
   let d = new Date(`${start}T00:00:00`);
   const e = new Date(`${end}T00:00:00`);
   while (d <= e) {
     const dateStr = d.toISOString().split('T')[0];
     if (!holidays.has(dateStr)) {
-      const dayName = d.toLocaleDateString('en-US', { weekday: 'long' });
+      // Handle Saturday simulation
+      let dayName = specialDays[dateStr] || d.toLocaleDateString('en-US', { weekday: 'long' });
       const daySchedule = cls.settings.timetable.find(t => t.day === dayName);
       if (daySchedule) {
         daySchedule.slots.forEach(slot => {

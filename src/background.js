@@ -22,47 +22,36 @@ async function handleBackgroundSync(res) {
   
   let classCode = res.classInfo?.classCode || appState.activeClassCode || "unknown";
   
-  // THE GHOST CLASS FIX: If only syncing calendar holidays, force it into current profile
+  // THE GHOST CLASS FIX: Force calendar syncs into current profile
   if (res.records.length === 0 && Object.keys(res.subjectCatalog || {}).length === 0 && res.holidays?.length > 0) {
     if (appState.activeClassCode) classCode = appState.activeClassCode;
   }
   
-  // Ensure the semester profile exists
   if (!appState.classes) appState.classes = {};
   if (!appState.classes[classCode]) {
-    appState.classes[classCode] = { 
-      classInfo: res.classInfo || { classCode }, 
-      subjectCatalog: {}, 
-      manualRecords: [],
-      settings: createDefaultSettings() 
-    };
+    appState.classes[classCode] = { classInfo: res.classInfo || { classCode }, subjectCatalog: {}, manualRecords: [], settings: createDefaultSettings() };
   }
   
   appState.activeClassCode = classCode;
   const scannedRecords = res.records.map(r => ({ ...r, classCode }));
-  
-  // Merge Subjects
   appState.classes[classCode].subjectCatalog = { ...(appState.classes[classCode].subjectCatalog || {}), ...(res.subjectCatalog || {}) };
   
-  // Merge Records (Idempotent wipe of old portal records, but KEEP manual overrides)
-  if (scannedRecords.length) {
+  // THE GHOST ABSENCE FIX: Overwrite if it's the Leave page, even if 0 records!
+  if (scannedRecords.length > 0 || res.isLeavePage) {
     const existing = appState.records || [];
     const preserved = existing.filter(r => !(r.classCode === classCode && (r.source === "rsms-leave-grid" || r.source === "portal")));
     
-    // Deduplicate and merge (Manual 'preserved' records OVERWRITE portal 'scannedRecords')
     const map = new Map();
     [...scannedRecords, ...preserved].forEach(r => map.set([r.classCode, r.date, r.hour, r.subject].join("|"), r));
     appState.records = [...map.values()];
   }
   
-  // Merge Holidays
   if (res.holidays?.length) {
     const existingHols = new Set(appState.classes[classCode].settings.holidays || []);
     res.holidays.forEach(h => existingHols.add(h));
     appState.classes[classCode].settings.holidays = Array.from(existingHols).sort();
   }
   
-  // Update Sync Metadata (Totals)
   const totalSubjects = Object.keys(appState.classes[classCode].subjectCatalog || {}).length;
   const totalRecords = appState.records.filter(r => r.classCode === classCode).length;
   appState.classes[classCode].lastSync = { pageTitle: res.pageTitle, scannedAt: res.scannedAt, imported: totalRecords, subjects: totalSubjects };
@@ -73,6 +62,7 @@ async function handleBackgroundSync(res) {
   if (res.records.length > 0) return `+${res.records.length} Records`;
   if (res.holidays?.length > 0) return `+${res.holidays.length} Holidays`;
   if (Object.keys(res.subjectCatalog||{}).length > 0) return `+Subjects`;
+  if (res.isLeavePage) return "Records Cleaned";
   return "Synced";
 }
 

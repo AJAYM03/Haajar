@@ -34,29 +34,22 @@
   function scanCalendar() {
     if (!/calendar/i.test(document.title) && !/calendar/i.test(document.body.innerText)) return [];
     const holidays = [];
-    
-    // Find the month/year header (e.g., "August 2026")
     const headers = [...document.querySelectorAll("th, td, div")].filter(el => /^[A-Za-z]+\s+\d{4}$/.test(el.innerText.trim()));
     if (!headers.length) return [];
     
-    const monthYearStr = headers[0].innerText.trim(); // "August 2026"
+    const monthYearStr = headers[0].innerText.trim();
     const parsedDate = new Date(`${monthYearStr} 01`);
     if (isNaN(parsedDate)) return [];
     
     const year = parsedDate.getFullYear();
     const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
 
-    // Find red dates (Sundays or Holidays)
     [...document.querySelectorAll("td")].forEach(cell => {
       const text = cell.innerText.trim();
       const numMatch = text.match(/^(\d{1,2})/);
       if (!numMatch) return;
-      
       const isRed = cell.querySelector('font[color="red"]') || getComputedStyle(cell).color === 'rgb(255, 0, 0)';
-      if (isRed) {
-        const day = String(numMatch[1]).padStart(2, '0');
-        holidays.push(`${year}-${month}-${day}`);
-      }
+      if (isRed) holidays.push(`${year}-${month}-${String(numMatch[1]).padStart(2, '0')}`);
     });
     return holidays;
   }
@@ -246,9 +239,9 @@
     }).map(r => ({ date: r.date?.iso || r.date, hour: r.hour || null, subject: normalizeSubject(r.subject), status: r.status.value || r.status, source: r.source || "portal" }));
   }
 
-// --- V2.0 FLOATING SYNC BUTTON (SUPER IMMORTAL) ---
+  // --- V2.0 FLOATING SYNC BUTTON (SUPER IMMORTAL) ---
   function injectFloatingButton() {
-    if (document.getElementById("haajar-sync-btn")) return;
+    if (document.getElementById("haajar-sync-btn") || !isLikelyRsmsPage()) return;
     
     const btn = document.createElement("button");
     btn.id = "haajar-sync-btn";
@@ -291,7 +284,9 @@
 
   // Watch the HTML root, not the Body!
   const observer = new MutationObserver(() => {
-    if (!document.getElementById("haajar-sync-btn")) injectFloatingButton();
+    if (!document.getElementById("haajar-sync-btn") && isLikelyRsmsPage()) {
+      injectFloatingButton();
+    }
   });
   observer.observe(document.documentElement, { childList: true, subtree: true });
 

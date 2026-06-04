@@ -7,13 +7,12 @@ chrome.runtime.onInstalled.addListener(() => {
   });
 });
 
-// Listen for the Floating Button from content.js
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "HAAJAR_BG_SYNC" && message.payload) {
     handleBackgroundSync(message.payload)
       .then(msg => sendResponse({ success: true, msg: msg }))
-      .catch(err => sendResponse({ success: false, msg: "Error" }));
-    return true; // Keeps the message channel open for async response
+      .catch(err => sendResponse({ success: false, msg: "Error: " + err.message }));
+    return true; 
   }
 });
 
@@ -23,15 +22,21 @@ async function handleBackgroundSync(res) {
   
   let classCode = res.classInfo?.classCode || appState.activeClassCode || "unknown";
   
-  // V2.0 FIX: If we are ONLY syncing calendar holidays, ignore the page's messy text 
-  // and force the holidays into your current active semester profile.
+  // THE GHOST CLASS FIX: If only syncing calendar holidays, force it into current profile
   if (res.records.length === 0 && Object.keys(res.subjectCatalog || {}).length === 0 && res.holidays?.length > 0) {
     if (appState.activeClassCode) classCode = appState.activeClassCode;
   }
   
   // Ensure the semester profile exists
   if (!appState.classes) appState.classes = {};
-  if (!appState.classes[classCode]) appState.classes[classCode] = { classInfo: res.classInfo || { classCode }, subjectCatalog: {}, settings: createDefaultSettings() };
+  if (!appState.classes[classCode]) {
+    appState.classes[classCode] = { 
+      classInfo: res.classInfo || { classCode }, 
+      subjectCatalog: {}, 
+      manualRecords: [],
+      settings: createDefaultSettings() 
+    };
+  }
   
   appState.activeClassCode = classCode;
   const scannedRecords = res.records.map(r => ({ ...r, classCode }));
@@ -39,7 +44,7 @@ async function handleBackgroundSync(res) {
   // Merge Subjects
   appState.classes[classCode].subjectCatalog = { ...(appState.classes[classCode].subjectCatalog || {}), ...(res.subjectCatalog || {}) };
   
-  // Merge Records (Idempotent wipe of old portal records)
+  // Merge Records (Idempotent wipe of old portal records, but KEEP manual overrides)
   if (scannedRecords.length) {
     const existing = appState.records || [];
     const preserved = existing.filter(r => !(r.classCode === classCode && (r.source === "rsms-leave-grid" || r.source === "portal")));
@@ -48,7 +53,6 @@ async function handleBackgroundSync(res) {
     const map = new Map();
     [...scannedRecords, ...preserved].forEach(r => map.set([r.classCode, r.date, r.hour, r.subject].join("|"), r));
     appState.records = [...map.values()];
-    
   }
   
   // Merge Holidays
@@ -66,7 +70,6 @@ async function handleBackgroundSync(res) {
   
   await chrome.storage.local.set({ [STORAGE_KEY]: appState });
   
-  // Return a short message for the floating button
   if (res.records.length > 0) return `+${res.records.length} Records`;
   if (res.holidays?.length > 0) return `+${res.holidays.length} Holidays`;
   if (Object.keys(res.subjectCatalog||{}).length > 0) return `+Subjects`;

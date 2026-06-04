@@ -9,8 +9,11 @@
     <main class="app">
       <header class="topbar">
         <div>
-          <h1>Haajar (ഹാജർ)</h1>
-          <p id="syncMeta">No portal sync yet</p>
+          <div style="display: flex; align-items: center; justify-content: space-between; width: 100%; gap: 10px;">
+            <h1>Haajar</h1>
+            <select id="semesterSelect" style="width: auto; padding: 4px 8px; font-size: 12px; background: rgba(0, 0, 0, 0.2); color: white; border: 1px solid rgba(255, 255, 255, 0.3); border-radius: 4px; cursor: pointer;"></select>
+          </div>
+          <p id="syncMeta" style="margin-top: 4px;">No portal sync yet</p>
         </div>
         <div style="display: flex; gap: 8px;">
           <button id="openSetupButton" title="Open Setup">⚙️</button>
@@ -25,9 +28,7 @@
       </nav>
 
       <section id="dashboard" class="view is-active">
-        <section id="classContext" class="class-context"></section>
         <div class="summary">
-          <div><span class="label">Active Window</span><strong id="activeWindowLabel">Semester</strong></div>
           <div><span class="label">Target</span><strong id="targetLabel">75%</strong></div>
           <div><span class="label">Records</span><strong id="recordCount">0</strong></div>
         </div>

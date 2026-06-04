@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "Haajar (ഹാജർ)",
   "description": "Zero-backend RSMS attendance tracker, leave simulator, and safe-buffer calculator.",
-  "version": "1.0.0",
+  "version": "2.0.0",
   "icons": {
     "16": "assets/Haajar_Logo.png",
     "48": "assets/Haajar_Logo.png",

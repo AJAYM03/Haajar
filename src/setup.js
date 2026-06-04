@@ -105,6 +105,7 @@ function renderTimetable() {
 }
 
 // --- THE SMART PARSER ---
+// --- THE SMART PARSER ---
 async function importCSV() {
   const csvText = document.getElementById("csvText").value;
   if (!csvText.trim()) return alert("Please paste the CSV text first.");
@@ -123,7 +124,6 @@ async function importCSV() {
     else if (type === 'MAPPING' && parts.length >= 4) {
       aliases[parts[1].toUpperCase()] = parts[2].toUpperCase();
       if (parts[2].toUpperCase() !== 'FREE') {
-        // Fix: Store as an object to match the content.js scraper
         catalog[parts[2].toUpperCase()] = { name: parts.slice(3).join(',').trim() };
       }
     }
@@ -145,7 +145,8 @@ async function importCSV() {
         if (val.toUpperCase() === 'FREE') val = "";
         slots.push({ hour: i, subject: val.toUpperCase() }); 
       }
-      timetableMap[parts[0]] = slots;
+      // THE FIX: Use the uppercase 'type' variable instead of the raw 'parts[0]'
+      timetableMap[type] = slots; 
     }
   });
 
@@ -157,7 +158,7 @@ async function importCSV() {
   appState.classes[activeCode].subjectCatalog = catalog;
   appState.classes[activeCode].settings.holidays = holidays;
   appState.classes[activeCode].settings.specialDays = specialDays;
-  appState.classes[activeCode].settings.aliases = aliases; // FIX: Save aliases so the Math Engine can use them!
+  appState.classes[activeCode].settings.aliases = aliases; 
   appState.classes[activeCode].settings.timetable = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'].map(day => ({
     day: day.charAt(0) + day.slice(1).toLowerCase(), 
     slots: timetableMap[day] || Array.from({length:7}, (_,i)=>({hour:i+1, subject:""}))

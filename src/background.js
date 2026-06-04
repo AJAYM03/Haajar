@@ -21,7 +21,13 @@ async function handleBackgroundSync(res) {
   const raw = await chrome.storage.local.get(STORAGE_KEY);
   let appState = raw[STORAGE_KEY] || createDefaultState();
   
-  const classCode = res.classInfo?.classCode || appState.activeClassCode || "unknown";
+  let classCode = res.classInfo?.classCode || appState.activeClassCode || "unknown";
+  
+  // V2.0 FIX: If we are ONLY syncing calendar holidays, ignore the page's messy text 
+  // and force the holidays into your current active semester profile.
+  if (res.records.length === 0 && Object.keys(res.subjectCatalog || {}).length === 0 && res.holidays?.length > 0) {
+    if (appState.activeClassCode) classCode = appState.activeClassCode;
+  }
   
   // Ensure the semester profile exists
   if (!appState.classes) appState.classes = {};

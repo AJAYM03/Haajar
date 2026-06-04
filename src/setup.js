@@ -65,6 +65,13 @@ function render() {
     document.getElementById('windowTarget').value = w.target || 75;
   };
   
+  // Load Holidays into the new text box
+  const holidayInput = document.getElementById('holidays');
+  if (holidayInput) {
+    holidayInput.value = (cls.settings.holidays || []).join('\n');
+  }
+
+
   // Load Manual Records
   const manualText = (cls.manualRecords || []).map(r => `${r.date}, ${r.hour}, ${r.subject}, ${r.type}`).join('\n');
   document.getElementById('manualRecords').value = manualText;
@@ -105,7 +112,7 @@ function renderTimetable() {
 }
 
 // --- THE SMART PARSER ---
-// --- THE SMART PARSER ---
+// --- THE SMART PARSER (Fixed Overwrite & Case-Sensitivity) ---
 async function importCSV() {
   const csvText = document.getElementById("csvText").value;
   if (!csvText.trim()) return alert("Please paste the CSV text first.");
@@ -128,6 +135,14 @@ async function importCSV() {
       }
     }
     else if (type === 'HOLIDAY' && parts.length >= 2) holidays.push(parts[1]);
+    else if (type === 'HOLIDAY_RANGE' && parts.length >= 3) {
+      let current = new Date(parts[1]);
+      const end = new Date(parts[2]);
+      while (current <= end) {
+        holidays.push(current.toISOString().split('T')[0]);
+        current.setDate(current.getDate() + 1);
+      }
+    }
     else if (type === 'SPECIAL' && parts.length >= 3) specialDays[parts[1]] = parts[2];
   });
 
@@ -140,33 +155,60 @@ async function importCSV() {
     if (['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'].includes(type)) {
       const slots = [];
       for (let i = 1; i <= 7; i++) {
-        let val = parts[i] || "";
+        // FIX 1: Ensure the alias lookup is case-insensitive
+        let val = (parts[i] || "").toUpperCase();
         if (aliases[val]) val = aliases[val];
-        if (val.toUpperCase() === 'FREE') val = "";
-        slots.push({ hour: i, subject: val.toUpperCase() }); 
+        
+        const subjectCode = val === 'FREE' ? "" : val;
+        slots.push({ hour: i, subject: subjectCode }); 
+        
+        // FIX 2: If a subject is in the timetable but missing from MAPPING, 
+        // add it to catalog automatically so the dropdown doesn't break
+        if (subjectCode && !catalog[subjectCode]) {
+          catalog[subjectCode] = { name: subjectCode };
+        }
       }
-      // THE FIX: Use the uppercase 'type' variable instead of the raw 'parts[0]'
       timetableMap[type] = slots; 
     }
   });
 
+  // MERGE LOGIC
   appState.activeClassCode = activeCode;
   if (!appState.classes[activeCode]) {
-    appState.classes[activeCode] = { classInfo: { classCode: activeCode }, records: [], manualRecords: [], settings: { windows: { semester: { target: 75 } }, holidays: [], specialDays: {}, aliases: {} } };
+    appState.classes[activeCode] = { 
+      classInfo: { classCode: activeCode }, 
+      records: [], 
+      manualRecords: [], 
+      settings: createDefaultSettings() 
+    };
   }
   
-  appState.classes[activeCode].subjectCatalog = catalog;
-  appState.classes[activeCode].settings.holidays = holidays;
-  appState.classes[activeCode].settings.specialDays = specialDays;
-  appState.classes[activeCode].settings.aliases = aliases; 
-  appState.classes[activeCode].settings.timetable = ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'].map(day => ({
-    day: day.charAt(0) + day.slice(1).toLowerCase(), 
-    slots: timetableMap[day] || Array.from({length:7}, (_,i)=>({hour:i+1, subject:""}))
-  }));
+  const cls = appState.classes[activeCode];
+  
+  // Merge Catalog & Holidays safely (Non-Destructive)
+  cls.subjectCatalog = { ...cls.subjectCatalog, ...catalog };
+  const existingHols = new Set(cls.settings.holidays || []);
+  holidays.forEach(h => existingHols.add(h));
+  cls.settings.holidays = Array.from(existingHols).sort();
+  cls.settings.specialDays = { ...cls.settings.specialDays, ...specialDays };
+  cls.settings.aliases = { ...cls.settings.aliases, ...aliases }; 
+
+  // FIX 3: Overwrite the timetable slots. 
+  // If the user pastes a CSV, the CSV acts as the explicit new baseline.
+  ['MONDAY','TUESDAY','WEDNESDAY','THURSDAY','FRIDAY'].forEach(dayKey => {
+    const day = dayKey.charAt(0) + dayKey.slice(1).toLowerCase();
+    const existingDay = cls.settings.timetable.find(t => t.day === day);
+    
+    if (existingDay) {
+      if (timetableMap[dayKey]) existingDay.slots = timetableMap[dayKey];
+    } else {
+      cls.settings.timetable.push({ day, slots: timetableMap[dayKey] || Array.from({length:7}, (_,i)=>({hour:i+1, subject:""})) });
+    }
+  });
 
   await saveState(appState);
   document.getElementById("csvText").value = "";
-  alert(`Setup Saved for ${activeCode}! The visual grid has been generated.`);
+  alert(`Setup Saved for ${activeCode}!`);
   render();
 }
 
@@ -190,6 +232,7 @@ async function saveTimetable() {
 
 
 // --- SAVE THE WINDOW SETTINGS ---
+// --- SAVE THE WINDOW SETTINGS (Now with Range Parsing!) ---
 async function saveDates() {
   if (!appState.activeClassCode || !appState.classes[appState.activeClassCode]) return alert("Import a CSV first!");
   const cls = appState.classes[appState.activeClassCode];
@@ -202,8 +245,38 @@ async function saveDates() {
   cls.settings.windows[winKey].end = document.getElementById("endDate").value;
   cls.settings.windows[winKey].target = parseInt(document.getElementById("windowTarget").value) || 75;
 
+  // PARSE HOLIDAYS & EXAM RANGES
+  const holidayInput = document.getElementById("holidays");
+  if (holidayInput) {
+    const rawHolidays = holidayInput.value.split(/\n|,/);
+    const expandedHolidays = new Set();
+    
+    rawHolidays.forEach(line => {
+      const text = line.trim();
+      if (!text) return;
+      
+      if (text.includes("to")) {
+        // Parse ranges like "2026-03-02 to 2026-03-07"
+        const [startStr, endStr] = text.split("to").map(s => s.trim());
+        let current = new Date(startStr);
+        const end = new Date(endStr);
+        while (current <= end && !isNaN(current.getTime())) {
+          expandedHolidays.add(current.toISOString().split('T')[0]);
+          current.setDate(current.getDate() + 1);
+        }
+      } else {
+        // Add single dates (ignore empty/invalid lines)
+        if (!isNaN(new Date(text).getTime())) {
+          expandedHolidays.add(text);
+        }
+      }
+    });
+    cls.settings.holidays = Array.from(expandedHolidays).sort();
+  }
+
   await saveState(appState);
-  alert("Window Settings Saved!");
+  alert("Window Settings & Holidays Saved!");
+  render();
 }
 
 async function saveManualRecords() {
@@ -263,7 +336,15 @@ function importState(event) {
 }
 
 // Helpers
-function escapeHtml(v) { return String(v || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"); }
+// Replace your current escapeHtml function with this:
+function escapeHtml(v) { 
+  return String(v || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;"); 
+}
 async function loadState() { const r = await chrome.storage.local.get(STORAGE_KEY); return normalizeState(r[STORAGE_KEY] || { records: [], subjectCatalog: {}, classInfo: null, settings: createDefaultSettings() }); }
 function normalizeState(s) { const n = { records: [], subjectCatalog: {}, classInfo: null, activeClassCode: "", classes: {}, settings: createDefaultSettings(), ...s }; n.records = (s?.records || []).map(r => ({ ...r, classCode: r.classCode || s?.classInfo?.classCode || n.activeClassCode || "legacy" })); if (!n.activeClassCode) n.activeClassCode = s?.classInfo?.classCode || Object.keys(n.classes)[0] || ""; return n; }
 function createDefaultSettings() { return { activeWindow: "semester", windows: { semester: { start: "", end: "", target: 75 } }, holidays: [], specialDays: {}, timetable: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => ({ day: d, slots: Array.from({ length: 7 }, (_, i) => ({ hour: i + 1, subject: "" })) })) }; }

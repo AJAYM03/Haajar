@@ -1,60 +1,81 @@
-# Haajar (ഹാജർ) 📊
+# Haajar (ഹാജർ) 📊 
 
-<div align="center">
-  <em>A privacy-first, zero-backend Chrome/Edge extension for academic attendance tracking and leave forecasting on the RSMS portal.</em><br>
-  <em>Empowering students with data-driven insights to maintain academic compliance.</em>
-</div>
+**A privacy-first, zero-backend Chrome Extension built to help students navigate strict attendance mandates without the manual math.**
 
 ---
 
-## 📖 The Backstory
-Balancing rigorous coursework with extracurricular activities—like hackathons, placement drives, tech fests, and internships—requires careful time management. 
+## 🛑 The Backstory: Flying Blind
+If you've ever balanced hackathons, tech fests, placement drives, or personal emergencies against a strict 75% (or 80% for internals) attendance mandate, you know the anxiety. 
 
-While the Rajagiri Students' Management System (RSMS) efficiently logs data, manually calculating the impact of future duty leaves, medical absences, or unexpected college closures on your overall attendance percentage is a complex, manual task. Between massive elective blocks, Honours courses, public holidays, and dynamic timetable shifts, forecasting attendance health is difficult.
+At my college, our attendance percentage was essentially a closely guarded secret until a few days before exams. Our student portal (RSMS) only gave us raw data: the date, the hour, and the subject code of the classes we missed. If you wanted to step off campus for a valid reason, you had to make a blind choice—guess your "Safe Buffer," do the manual math, and pray you didn't end up in the condonation office two months later.
 
-I wanted a tool that solved this tangible problem using local data without requiring logins, backend databases, or privacy risks. Built with a focus on seamless automation, **Haajar** sits in your browser, parses your RSMS grid, performs the calculations locally, and provides a clear, mathematical overview of your academic standing so you can plan your semester responsibly.
+I'm a big believer in "productive laziness." If a repetitive task annoys me enough, I will gladly spend hours engineering a solution to save myself 5 minutes a week. 
 
-## ✨ Features
+It’s been a couple of months since I graduated, and I wanted to leave something behind to solve this specific anxiety. That’s how **Haajar** was born. 
 
-* **Zero-Knowledge Architecture:** Runs entirely in your browser using `chrome.storage.local`. No external databases, no API keys, and absolutely zero privacy risks. Your data never leaves your local machine.
-* **Leave Impact Simulator:** Select dates for upcoming tech fests, medical leaves, or personal emergencies, and the app will simulate exactly how those absences will impact your subject-wise compliance targets.
-* **Smart RSMS Parsing:** Automatically decodes the color-coded RSMS Leave Details grid (Leave, Approved Leave, Duty Leave) and your Marks pages to dynamically build your subject catalog.
-* **Compliance Buffer Calculator:** Tells you the exact mathematical buffer you have above the 75% mandate, and provides recovery targets if you fall short.
-* **"Saturday Swap" Engine:** Built-in override system to seamlessly handle special academic working days and college holidays.
-* **Native College UI:** Designed with the official institutional color palette (Maroon & Orange) for a seamless, professional user experience.
+## 🛠️ What is Haajar?
+Haajar is a lightweight Chrome extension that acts as your personal attendance copilot[cite: 2]. It scrapes your raw absence data from the college portal, maps it against your specific batch's timetable, and calculates your exact mathematical buffer locally.
 
-## 🚀 How to Install (Developer Mode)
+It tells you exactly how many classes you can afford to miss (or need to attend) to stay safe.
 
-Since this is an unpacked extension, you can install it locally in seconds:
-
-1. Download or clone this repository.
-2. Open Chrome or Edge and navigate to `chrome://extensions/` (or `edge://extensions/`).
-3. Turn on **Developer mode** (usually a toggle in the top right corner).
-4. Click **Load unpacked** and select the `Haajar` folder.
-5. Pin the extension to your toolbar.
-
-## 🛠️ Setup Guide
-
-You only need to configure this once per semester:
-
-1. **Sync your Subjects:** Open your RSMS **Marks/Internal Exam** page and click the Haajar extension. Press **Sync**. This grabs your specific enrolled subjects.
-2. **Map the Timetable:** Click the ⚙️ Gear icon in the popup to open the Full-Page Setup. Paste your batch's Master Timetable CSV *(Pro-tip: Your Class Rep can generate one Master CSV for the entire batch to copy-paste)*. 
-3. **Lock in Electives:** Any generic elective or honours slots will be highlighted in yellow. Click them and select your exact enrolled course code from the dropdown. *(Note: Semesters before S6 generally don't have major electives, making setup even faster, though you'll still map specific Honours/Minors/Remedial codes here).*
-4. **Sync your Leaves:** Open your RSMS **Leave Details** page and press **Sync** one last time. 
-
-From now on, just click the extension to view your live, mathematically accurate attendance dashboard.
-
-## ⚠️ Issues & Limitations
-
-* **The CSV Requirement:** Why not auto-scrape the timetable from the portal? Because official timetables often list generic blocks (like `ELECTIVE 3`). A pure auto-scraper wouldn't know which specific subject you opted for. The CSV + Dropdown method is slightly more manual upfront, but it ensures your attendance math is 100% mathematically flawless by forcing explicit course mapping.
-* **Scraper Brittleness:** The `content.js` script relies on the specific DOM structure and hex colors of the current RSMS portal. If the college IT department pushes a major UI update or changes the "Leave" color code, the extension will temporarily fail to read data until a developer updates the regex/color variables in the code.
-* **Browser-Bound Storage:** Because Haajar has no backend database to protect your privacy, data is bound to your specific browser profile. If you uninstall the extension or clear your browser's core profile data, your attendance tracking will reset. **Solution:** Use the *Export Diagnostic File* button in the Setup tab to periodically back up your JSON data locally.
-
-## 🧑‍💻 Tech Stack
-* **Frontend:** HTML, CSS (Vanilla, utilizing modern CSS Grid/Flexbox architectures)
-* **Logic:** Vanilla JavaScript (ES6+)
-* **Browser API:** Manifest V3, `chrome.storage.local`, `chrome.scripting`
-* **Data Flow:** Idempotent DOM scraping algorithms (No Webpack/Bundlers required for lightweight performance)
+**🔒 100% Privacy-First:** Haajar has **ZERO** backend servers. It doesn't ask for your portal password, it doesn't make external API calls, and it steals zero data. It simply reads the HTML currently on your screen and saves the math locally to your browser's storage via `chrome.storage.local`[cite: 2].
 
 ---
-*Built to simplify academic data management and help students plan smarter.*
+
+## ✨ Features (Handling the Edge Cases)
+Building this was a massive lesson in how chaotic real-world university scheduling actually is. Haajar is engineered with a few "smart" systems to handle the bureaucracy:
+
+* **Batch-Level CSV Configurations:** Instead of every student manually typing their schedule, a Class Rep can create one "Master CSV" defining the timetable and electives. The whole batch can just copy, paste, and import it in 5 seconds[cite: 2].
+* **The "Typo" Translation Engine:** Sometimes an admin logs a subject as `CS800T` instead of `COMPREHENSIVE`. Haajar uses an Alias mapping system to automatically translate institutional typos so your math doesn't break[cite: 2].
+* **Dynamic Range Parsing:** College delayed the internal exams? Just type `2026-03-02 to 2026-03-07` into the Setup tab. The engine parses the range and instantly wipes those days from your denominator[cite: 2].
+* **Visual Timetable Editor:** Allows individual students to swap out generic electives for their specific choices without breaking the batch configuration[cite: 2].
+
+---
+
+## 🚀 Installation & Setup (Takes 60 Seconds)
+
+### Step 1: Install the Extension
+1. Clone or download this repository.
+2. Open Chrome and go to `chrome://extensions/`.
+3. Enable **"Developer mode"** in the top right.
+4. Click **"Load unpacked"** and select the Haajar folder[cite: 2].
+
+### Step 2: Import the Timetable
+1. Click the Haajar icon in your toolbar and open the **Setup (⚙️)** tab[cite: 2].
+2. Paste your batch's **Master CSV** (ask your Class Rep for this) into the import box and click **Import**.
+3. *Optional:* Use the Visual Timetable dropdowns to select your specific electives and hit **Save Timetable**.
+
+### Step 3: Sync Your Data
+1. Navigate to your **Leave Details** page on the student portal. Click the floating orange **📊 Sync to Haajar** button injected onto the page[cite: 2].
+2. Navigate to the **Academic Calendar** page and hit the sync button to pull official holidays[cite: 2].
+3. Open the Haajar dashboard to see your Safe Buffers!
+
+---
+
+## ⚠️ Known Issues & The Reality of Scraping
+I will be incredibly honest: this extension is a fragile beast. Because it relies on scraping a legacy web portal, there are edge cases.
+
+* **DOM-Coupling:** If the college IT department changes a single CSS class or table layout on the portal tomorrow, the scraper in `src/content.js` will break[cite: 2]. 
+* **Color-Blind Calendars:** The calendar scraper only natively detects dates formatted in `<font color="red">`[cite: 2]. It cannot read text announcements (like "College closed tomorrow"). 
+* **Special Saturdays:** If the college declares a Saturday working day with a "Tuesday timetable," the math will be slightly off. You will need to manually inject or adjust records.
+* **Internal Exams:** You **must** manually input your internal exam date ranges in the Setup tab so the engine knows not to count those days as conducted classes[cite: 2].
+
+---
+
+## 🤝 To My Juniors: Passing the Torch
+I built the foundation, but it needs your help to survive the edge cases. I am leaving this code completely open-source. 
+
+If you think this is useful for your batch, the repo is yours. Fork it, test it, break it, and fix the bugs I couldn't. 
+
+### How to Create a Master CSV for Your Batch
+You don't need to write this from scratch. Take your class timetable, paste it into ChatGPT/Gemini, and ask it to format it based on the CSV structure found in `src/setup.js`[cite: 2]. It takes two minutes. 
+
+### How to Fix a Broken Scraper
+If the portal updates and Haajar stops syncing, you just need to inspect the portal's new HTML and update the `scanAttendanceRecords` regex and table logic inside `src/content.js`[cite: 2].
+
+If nobody wants to pick it up and it eventually breaks, that's completely fine too. It can quietly go down the drain. I'm just happy I took a shot at building it.
+
+---
+
+### License
+MIT License. Do whatever you want with it.

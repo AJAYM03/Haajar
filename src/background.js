@@ -8,6 +8,9 @@ chrome.runtime.onInstalled.addListener(() => {
 });
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  // SECURITY PATCH: Ignore messages not sent by our own extension
+  if (sender.id !== chrome.runtime.id) return;
+
   if (message.type === "HAAJAR_BG_SYNC" && message.payload) {
     handleBackgroundSync(message.payload)
       .then(msg => sendResponse({ success: true, msg: msg }))

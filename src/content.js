@@ -11,13 +11,17 @@
     scan: () => {
       try {
         const classInfo = getSelectedClassInfo();
-        const holidays = scanCalendar();
+        const calendarData = scanCalendar();
         return {
           ok: true,
           records: scanAttendanceRecords(),
           classInfo,
           subjectCatalog: scanSubjectCatalog(),
-          holidays: holidays,
+          holidays: calendarData.holidays || [],
+          internalDates: { 
+             internal1: calendarData.internal1Start, 
+             internal2: calendarData.internal2Start 
+          },
           pageTitle: document.title,
           isLeavePage: /leave details/i.test(document.body?.innerText || "") || /leave/i.test(document.title),
           scannedAt: new Date().toISOString()
@@ -33,14 +37,19 @@
   });
 
   function scanCalendar() {
-    if (!/calendar/i.test(document.title) && !/calendar/i.test(document.body.innerText)) return [];
+    // Notice it now returns an empty object {} instead of an array [] if it fails
+    if (!/calendar/i.test(document.title) && !/calendar/i.test(document.body.innerText)) return {}; 
+    
     const holidays = [];
+    let internal1Start = null;
+    let internal2Start = null;
+
     const headers = [...document.querySelectorAll("th, td, div")].filter(el => /^[A-Za-z]+\s+\d{4}$/.test(el.innerText.trim()));
-    if (!headers.length) return [];
+    if (!headers.length) return {};
     
     const monthYearStr = headers[0].innerText.trim();
     const parsedDate = new Date(`${monthYearStr} 01`);
-    if (isNaN(parsedDate)) return [];
+    if (isNaN(parsedDate)) return {};
     
     const year = parsedDate.getFullYear();
     const month = String(parsedDate.getMonth() + 1).padStart(2, '0');
@@ -49,11 +58,25 @@
       const text = cell.innerText.trim();
       const numMatch = text.match(/^(\d{1,2})/);
       if (!numMatch) return;
-      // The updated, robust color check
-const isRed = cell.querySelector('font[color="#FF0000"], font[color="#CC0000"], font[color="red"]');
-      if (isRed) holidays.push(`${year}-${month}-${String(numMatch[1]).padStart(2, '0')}`);
+      
+      // Standardize the date to YYYY-MM-DD
+      const currentDateIso = `${year}-${month}-${String(numMatch[1]).padStart(2, '0')}`;
+      const textLower = text.toLowerCase();
+
+      // 1. Holiday Check (with the robust hex code fix)
+      const isRed = cell.querySelector('font[color="#FF0000"], font[color="#CC0000"], font[color="red"]');
+      if (isRed) holidays.push(currentDateIso);
+
+      // 2. Internal Exam Check (Grabs the earliest date)
+      if (/internal.*1/i.test(textLower) || /1st.*internal/i.test(textLower)) {
+        if (!internal1Start || currentDateIso < internal1Start) internal1Start = currentDateIso;
+      }
+      if (/internal.*2/i.test(textLower) || /2nd.*internal/i.test(textLower)) {
+        if (!internal2Start || currentDateIso < internal2Start) internal2Start = currentDateIso;
+      }
     });
-    return holidays;
+    
+    return { holidays, internal1Start, internal2Start };
   }
 
   function scanAttendanceRecords() {

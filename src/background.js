@@ -49,10 +49,22 @@ async function handleBackgroundSync(res) {
     appState.records = [...map.values()];
   }
   
+  // --- HOLIDAY SYNC ---
   if (res.holidays?.length) {
     const existingHols = new Set(appState.classes[classCode].settings.holidays || []);
     res.holidays.forEach(h => existingHols.add(h));
     appState.classes[classCode].settings.holidays = Array.from(existingHols).sort();
+  }
+
+  // --- INTERNAL DATES SYNC (Respecting Manual Override) ---
+  const settings = appState.classes[classCode].settings;
+  if (!settings.windows) settings.windows = { internal1: {}, internal2: {} };
+
+  if (res.internal1Start && !settings.windows.internal1.start) {
+    settings.windows.internal1.start = res.internal1Start;
+  }
+  if (res.internal2Start && !settings.windows.internal2.start) {
+    settings.windows.internal2.start = res.internal2Start;
   }
   
   const totalSubjects = Object.keys(appState.classes[classCode].subjectCatalog || {}).length;

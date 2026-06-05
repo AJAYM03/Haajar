@@ -42,7 +42,7 @@ function render() {
     });
   }
 
-  const cls = appState.classes[appState.activeClassCode] || { settings: { activeWindow: "semester", windows: { semester: { target: 75 } } }, manualRecords: [] };
+  const cls = appState.classes[appState.activeClassCode] || { settings: createDefaultSettings(), manualRecords: [] };
   
   // Render the Visual Grid
   renderTimetable();
@@ -65,12 +65,18 @@ function render() {
     document.getElementById('windowTarget').value = w.target || 75;
   };
   
+  // Load the dedicated Internal Override pickers
+  const windows = cls.settings.windows || {};
+  document.getElementById("int1-start").value = windows.internal1?.start || "";
+  document.getElementById("int1-end").value = windows.internal1?.end || "";
+  document.getElementById("int2-start").value = windows.internal2?.start || "";
+  document.getElementById("int2-end").value = windows.internal2?.end || "";
+
   // Load Holidays into the new text box
   const holidayInput = document.getElementById('holidays');
   if (holidayInput) {
     holidayInput.value = (cls.settings.holidays || []).join('\n');
   }
-
 
   // Load Manual Records
   const manualText = (cls.manualRecords || []).map(r => `${r.date}, ${r.hour}, ${r.subject}, ${r.type}`).join('\n');
@@ -111,7 +117,6 @@ function renderTimetable() {
   `).join("");
 }
 
-// --- THE SMART PARSER ---
 // --- THE SMART PARSER (Fixed Overwrite & Case-Sensitivity) ---
 async function importCSV() {
   const csvText = document.getElementById("csvText").value;
@@ -229,9 +234,6 @@ async function saveTimetable() {
   render();
 }
 
-
-
-// --- SAVE THE WINDOW SETTINGS ---
 // --- SAVE THE WINDOW SETTINGS (Now with Range Parsing!) ---
 async function saveDates() {
   if (!appState.activeClassCode || !appState.classes[appState.activeClassCode]) return alert("Import a CSV first!");
@@ -244,6 +246,15 @@ async function saveDates() {
   cls.settings.windows[winKey].start = document.getElementById("startDate").value;
   cls.settings.windows[winKey].end = document.getElementById("endDate").value;
   cls.settings.windows[winKey].target = parseInt(document.getElementById("windowTarget").value) || 75;
+
+  // Save the dedicated internal overrides
+  if (!cls.settings.windows.internal1) cls.settings.windows.internal1 = {};
+  if (!cls.settings.windows.internal2) cls.settings.windows.internal2 = {};
+
+  cls.settings.windows.internal1.start = document.getElementById("int1-start").value;
+  cls.settings.windows.internal1.end = document.getElementById("int1-end").value;
+  cls.settings.windows.internal2.start = document.getElementById("int2-start").value;
+  cls.settings.windows.internal2.end = document.getElementById("int2-end").value;
 
   // PARSE HOLIDAYS & EXAM RANGES
   const holidayInput = document.getElementById("holidays");
@@ -336,7 +347,6 @@ function importState(event) {
 }
 
 // Helpers
-// Replace your current escapeHtml function with this:
 function escapeHtml(v) { 
   return String(v || "")
     .replaceAll("&", "&amp;")
@@ -345,7 +355,36 @@ function escapeHtml(v) {
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;"); 
 }
-async function loadState() { const r = await chrome.storage.local.get(STORAGE_KEY); return normalizeState(r[STORAGE_KEY] || { records: [], subjectCatalog: {}, classInfo: null, settings: createDefaultSettings() }); }
-function normalizeState(s) { const n = { records: [], subjectCatalog: {}, classInfo: null, activeClassCode: "", classes: {}, settings: createDefaultSettings(), ...s }; n.records = (s?.records || []).map(r => ({ ...r, classCode: r.classCode || s?.classInfo?.classCode || n.activeClassCode || "legacy" })); if (!n.activeClassCode) n.activeClassCode = s?.classInfo?.classCode || Object.keys(n.classes)[0] || ""; return n; }
-function createDefaultSettings() { return { activeWindow: "semester", windows: { semester: { start: "", end: "", target: 75 } }, holidays: [], specialDays: {}, timetable: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => ({ day: d, slots: Array.from({ length: 7 }, (_, i) => ({ hour: i + 1, subject: "" })) })) }; }
-async function saveState(s) { await chrome.storage.local.set({ [STORAGE_KEY]: s }); }
+
+async function loadState() { 
+  const r = await chrome.storage.local.get(STORAGE_KEY); 
+  return normalizeState(r[STORAGE_KEY] || { records: [], subjectCatalog: {}, classInfo: null, settings: createDefaultSettings() }); 
+}
+
+function normalizeState(s) { 
+  const n = { records: [], subjectCatalog: {}, classInfo: null, activeClassCode: "", classes: {}, settings: createDefaultSettings(), ...s }; 
+  n.records = (s?.records || []).map(r => ({ ...r, classCode: r.classCode || s?.classInfo?.classCode || n.activeClassCode || "legacy" })); 
+  if (!n.activeClassCode) n.activeClassCode = s?.classInfo?.classCode || Object.keys(n.classes)[0] || ""; 
+  return n; 
+}
+
+function createDefaultSettings() { 
+  return { 
+    activeWindow: "semester", 
+    windows: { 
+      internal1: { start: "", end: "", target: 80 }, 
+      internal2: { start: "", end: "", target: 80 }, 
+      semester: { start: "", end: "", target: 75 } 
+    }, 
+    holidays: [], 
+    specialDays: {}, 
+    timetable: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => ({ 
+      day: d, 
+      slots: Array.from({ length: 7 }, (_, i) => ({ hour: i + 1, subject: "" })) 
+    })) 
+  }; 
+}
+
+async function saveState(s) { 
+  await chrome.storage.local.set({ [STORAGE_KEY]: s }); 
+}

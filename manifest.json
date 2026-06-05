@@ -17,6 +17,12 @@
       "128": "assets/Haajar_Logo.png"
     }
   },
+  "content_scripts": [
+    {
+      "matches": ["*://*.rajagiritech.ac.in/*"],
+      "js": ["src/content.js"]
+    }
+  ],
   "permissions": [
     "activeTab",
     "storage",

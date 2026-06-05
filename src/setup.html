@@ -59,7 +59,21 @@
           <label>Start date<input type="date" id="startDate"></label>
           <label>End date<input type="date" id="endDate"></label>
         </div>
-        <label style="margin-top: 10px;">Holidays & Exam Ranges (e.g., 2026-03-02 to 2026-03-07)
+
+        <div style="margin-top: 16px; padding-top: 12px; border-top: 1px dashed var(--line);">
+          <h3 style="font-size: 14px; margin: 0 0 4px 0; color: var(--ink);">Internal Exam Windows (Override)</h3>
+          <p class="hint" style="margin-bottom: 10px;">Set exact date ranges. These take priority over the RSMS calendar sync.</p>
+          
+          <div class="grid" style="margin-bottom: 8px;">
+            <label>Int 1 Start<input type="date" id="int1-start"></label>
+            <label>Int 1 End<input type="date" id="int1-end"></label>
+          </div>
+          <div class="grid">
+            <label>Int 2 Start<input type="date" id="int2-start"></label>
+            <label>Int 2 End<input type="date" id="int2-end"></label>
+          </div>
+        </div>
+        <label style="margin-top: 16px;">Holidays & Exam Ranges (e.g., 2026-03-02 to 2026-03-07)
             <textarea id="holidays" rows="3" placeholder="YYYY-MM-DD&#10;YYYY-MM-DD to YYYY-MM-DD"></textarea>
         </label>
         <button id="saveDatesBtn" style="margin-top: 10px; width: 100%;">💾 Save Window Settings</button>

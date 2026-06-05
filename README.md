@@ -35,15 +35,15 @@ Real-world university scheduling is chaotic. Haajar is engineered to handle the 
 1. **Install:** Download this repository and load the unpacked extension into Chrome via `chrome://extensions/` (Developer Mode enabled).
 2. **Import:** Open the Haajar Setup tab (⚙️). Paste your batch's **Master CSV** (ask your Class Rep) and click **Import**.
 3. **Customize:** Use the dropdowns in the visual grid to select your specific electives and hit Save.
-4. **Sync:** Navigate to your **Leave Details** and **Academic Calendar** pages on RSMS. Click the floating orange **📊 Sync to Haajar** button on both pages. You're done!
+4. **Sync:** Navigate to your **Leave Details** page on RSMS and click the floating orange **📊 Sync to Haajar** button. *(Note: Skip the Academic Calendar page for now—the sync is currently bugged! Just manually enter holidays in the Setup tab).*
 
 ---
 
 ## ⚠️ The Reality of Scraping (Known Issues)
-I will be incredibly honest: this extension is a fragile beast. Because it relies on scraping a legacy web portal, there are edge cases.
+I will be incredibly honest: this extension is a fragile beast. I’ve tested it as much as I could, but if I'm being fully transparent, I still worry there are cracks I missed. Because it relies on scraping a legacy web portal, there are edge cases.
 
 * **DOM-Coupling:** If the college IT department changes a single table layout on the portal tomorrow, the scraper will break. 
-* **Color-Blind Calendars:** The scraper only natively detects dates formatted in red text (`<font color="red">`). You **must** manually input internal exam ranges in the Setup tab so the engine knows not to count those days.
+* **Broken Calendar Sync:** I thought this was working, but the Academic Calendar sync is currently bugged (it accidentally creates a new class profile instead of merging data safely). You **must** manually input holidays and internal exam ranges in the Setup tab so the engine knows not to count those days.
 * **Special Saturdays:** If the college declares a Saturday working day with a "Tuesday timetable," the math will be slightly off. You will need to manually adjust records in the Setup tab.
 
 ---

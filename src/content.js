@@ -18,9 +18,9 @@
           classInfo,
           subjectCatalog: scanSubjectCatalog(),
           holidays: calendarData.holidays || [],
-          internalDates: { 
-             internal1: calendarData.internal1Start, 
-             internal2: calendarData.internal2Start 
+          internalDates: calendarData.internalDates || {
+            internal1: calendarData.int1,
+            internal2: calendarData.int2
           },
           pageTitle: document.title,
           isLeavePage: /leave details/i.test(document.body?.innerText || "") || /leave/i.test(document.title),
@@ -58,29 +58,60 @@
       const numMatch = text.match(/^(\d{1,2})/);
       if (!numMatch) return;
       const currentDateIso = `${year}-${month}-${String(numMatch[1]).padStart(2, '0')}`;
-      const textLower = text.toLowerCase();
+      const eventText = text
+        .replace(/^\d{1,2}\b/, " ")
+        .replace(/\s+/g, " ")
+        .trim()
+        .toLowerCase();
+      const isMinorHonoursInternal = /\b(minor|honours?|honors?)\b/.test(eventText) && /\binternal\b/.test(eventText);
 
       // 1. Holiday Check
       const isRed = cell.querySelector('font[color="#FF0000"], font[color="#CC0000"], font[color="red"]');
-      if (isRed) holidays.push(currentDateIso);
+      if (isRed && !isMinorHonoursInternal) holidays.push(currentDateIso);
 
       // 2. Internal Exam Streak Detection
-      if (textLower.includes("internal") && textLower.includes("1")) {
-         internalDates.int1.push(currentDateIso);
+      if (isMinorHonoursInternal) return;
+      if (isMainInternalExam(eventText, 1)) {
+         internalDates.int1.push({
+           date: currentDateIso,
+           semesters: parseSemesterTags(eventText)
+         });
       }
-      if (textLower.includes("internal") && textLower.includes("2")) {
-         internalDates.int2.push(currentDateIso);
+      if (isMainInternalExam(eventText, 2)) {
+         internalDates.int2.push({
+           date: currentDateIso,
+           semesters: parseSemesterTags(eventText)
+         });
       }
     });
     
     // Convert arrays to min/max range
-    const getRange = (arr) => arr.length ? ({ start: arr.sort()[0], end: arr.sort()[arr.length-1] }) : ({ start: null, end: null });
-    
-    return { 
-        holidays, 
-        int1: getRange(internalDates.int1), 
-        int2: getRange(internalDates.int2) 
+    const getRange = (arr) => {
+      const dates = arr.map((event) => event.date || event).filter(Boolean).sort();
+      return dates.length ? ({ start: dates[0], end: dates[dates.length - 1] }) : ({ start: null, end: null });
     };
+    
+    return {
+        holidays,
+        int1: getRange(internalDates.int1),
+        int2: getRange(internalDates.int2),
+        internalDates: {
+          internal1: { ...getRange(internalDates.int1), events: internalDates.int1 },
+          internal2: { ...getRange(internalDates.int2), events: internalDates.int2 }
+        }
+    };
+  }
+
+  function isMainInternalExam(text, number) {
+    const examPattern = new RegExp(`\\binternal\\s+examinations?\\s*-\\s*${number}\\b`);
+    const compactPattern = new RegExp(`\\binternal\\s*-\\s*${number}\\b`);
+    return examPattern.test(text) || compactPattern.test(text);
+  }
+
+  function parseSemesterTags(text) {
+    return [...text.matchAll(/\bs\s*(\d+)\b/gi)]
+      .map((match) => Number(match[1]))
+      .filter(Boolean);
   }
 
   function scanAttendanceRecords() {

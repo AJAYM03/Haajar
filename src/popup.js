@@ -43,7 +43,8 @@ async function syncFromPortal() {
     if (!res?.ok) throw new Error(res?.error || "Could not read page.");
     
     // Send to background for robust saving
-    await chrome.runtime.sendMessage({ type: "HAAJAR_BG_SYNC", payload: res });
+    const saved = await chrome.runtime.sendMessage({ type: "HAAJAR_BG_SYNC", payload: res });
+    if (!saved?.success) throw new Error(saved?.msg || "Sync scanned the page, but saving failed.");
     
     // Reload state and re-render
     appState = await loadState();
@@ -175,7 +176,7 @@ function calculateSubjects(extraRecords = []) {
 
   // 2. OVERWRITE with Records (AND TRANSLATE TYPOS)
   const allRecords = [
-    ...(appState.records.filter(r => r.classCode === appState.activeClassCode) || []),
+    ...((appState.records || []).filter(r => r.classCode === appState.activeClassCode) || []),
     ...(cls.manualRecords || []),
     ...extraRecords
   ];
@@ -254,5 +255,56 @@ function generateLeaveRecords(start, end) {
 
 function getRiskStatus(p, t) { if (p < t) return { label: "Shortage", className: "danger", color: "var(--danger)" }; if (p < t + 5) return { label: "Warning", className: "warning", color: "var(--warn)" }; return { label: "Safe", className: "safe", color: "var(--safe)" }; }
 function escapeHtml(v) { return String(v || "").replaceAll("&", "&amp;").replaceAll("<", "&lt;").replaceAll(">", "&gt;").replaceAll('"', "&quot;"); }
-async function loadState() { const r = await chrome.storage.local.get(STORAGE_KEY); return r[STORAGE_KEY] || { records: [], activeClassCode: "", classes: {} }; }
+async function loadState() {
+  const r = await chrome.storage.local.get(STORAGE_KEY);
+  return normalizeState(r[STORAGE_KEY] || { records: [], activeClassCode: "", classes: {} });
+}
 async function saveState(s) { await chrome.storage.local.set({ [STORAGE_KEY]: s }); }
+
+function normalizeState(s = {}) {
+  const state = { records: [], activeClassCode: "", classes: {}, ...s };
+  state.records = state.records || [];
+  state.classes = state.classes || {};
+  Object.keys(state.classes).forEach((code) => {
+    const cls = state.classes[code];
+    cls.subjectCatalog = cls.subjectCatalog || {};
+    cls.manualRecords = cls.manualRecords || [];
+    cls.settings = normalizeSettings(cls.settings);
+  });
+  if (!state.activeClassCode) state.activeClassCode = Object.keys(state.classes)[0] || "";
+  return state;
+}
+
+function normalizeSettings(settings = {}) {
+  const defaults = createDefaultSettings();
+  return {
+    ...defaults,
+    ...settings,
+    windows: {
+      ...defaults.windows,
+      ...(settings.windows || {})
+    },
+    holidays: settings.holidays || [],
+    specialDays: settings.specialDays || {},
+    aliases: settings.aliases || {},
+    timetable: settings.timetable || defaults.timetable
+  };
+}
+
+function createDefaultSettings() {
+  return {
+    activeWindow: "semester",
+    windows: {
+      internal1: { start: "", end: "", target: 80 },
+      internal2: { start: "", end: "", target: 80 },
+      semester: { start: "", end: "", target: 75 }
+    },
+    holidays: [],
+    specialDays: {},
+    aliases: {},
+    timetable: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => ({
+      day: d,
+      slots: Array.from({ length: 7 }, (_, i) => ({ hour: i + 1, subject: "" }))
+    }))
+  };
+}

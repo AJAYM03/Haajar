@@ -178,6 +178,7 @@ async function importCSV() {
   });
 
   // MERGE LOGIC
+  appState = await loadState();
   appState.activeClassCode = activeCode;
   if (!appState.classes[activeCode]) {
     appState.classes[activeCode] = { 
@@ -219,15 +220,20 @@ async function importCSV() {
 
 async function saveTimetable() {
   if (!appState.activeClassCode) return;
-  const cls = appState.classes[appState.activeClassCode];
-
-  cls.settings.timetable = cls.settings.timetable.map((day) => ({
+  const activeCode = appState.activeClassCode;
+  const editedTimetable = (appState.classes[activeCode]?.settings?.timetable || []).map((day) => ({
     ...day,
     slots: day.slots.map((slot) => {
       const input = document.querySelector(`select[data-day="${day.day}"][data-hour="${slot.hour}"]`);
       return { ...slot, subject: input ? input.value : slot.subject };
     })
   }));
+
+  appState = await loadState();
+  if (!appState.classes[activeCode]) return alert("This class no longer exists. Re-import the CSV first.");
+  appState.activeClassCode = activeCode;
+  appState.classes[activeCode].settings = normalizeSettings(appState.classes[activeCode].settings);
+  appState.classes[activeCode].settings.timetable = editedTimetable;
   
   await saveState(appState);
   alert("Manual Timetable Changes Saved!");
@@ -237,26 +243,18 @@ async function saveTimetable() {
 // --- SAVE THE WINDOW SETTINGS (Now with Range Parsing!) ---
 async function saveDates() {
   if (!appState.activeClassCode || !appState.classes[appState.activeClassCode]) return alert("Import a CSV first!");
-  const cls = appState.classes[appState.activeClassCode];
+  const activeCode = appState.activeClassCode;
   const winKey = document.getElementById("activeWindow").value;
-
-  cls.settings.activeWindow = winKey;
-  if (!cls.settings.windows[winKey]) cls.settings.windows[winKey] = {};
-  
-  cls.settings.windows[winKey].start = document.getElementById("startDate").value;
-  cls.settings.windows[winKey].end = document.getElementById("endDate").value;
-  cls.settings.windows[winKey].target = parseInt(document.getElementById("windowTarget").value) || 75;
-
-  // Save the dedicated internal overrides
-  if (!cls.settings.windows.internal1) cls.settings.windows.internal1 = {};
-  if (!cls.settings.windows.internal2) cls.settings.windows.internal2 = {};
-
-  cls.settings.windows.internal1.start = document.getElementById("int1-start").value;
-  cls.settings.windows.internal1.end = document.getElementById("int1-end").value;
-  cls.settings.windows.internal2.start = document.getElementById("int2-start").value;
-  cls.settings.windows.internal2.end = document.getElementById("int2-end").value;
+  const startDate = document.getElementById("startDate").value;
+  const endDate = document.getElementById("endDate").value;
+  const target = parseInt(document.getElementById("windowTarget").value) || 75;
+  const int1Start = document.getElementById("int1-start").value;
+  const int1End = document.getElementById("int1-end").value;
+  const int2Start = document.getElementById("int2-start").value;
+  const int2End = document.getElementById("int2-end").value;
 
   // PARSE HOLIDAYS & EXAM RANGES
+  let holidays = [];
   const holidayInput = document.getElementById("holidays");
   if (holidayInput) {
     const rawHolidays = holidayInput.value.split(/\n|,/);
@@ -282,8 +280,24 @@ async function saveDates() {
         }
       }
     });
-    cls.settings.holidays = Array.from(expandedHolidays).sort();
+    holidays = Array.from(expandedHolidays).sort();
   }
+
+  appState = await loadState();
+  if (!appState.classes[activeCode]) return alert("This class no longer exists. Re-import the CSV first.");
+  appState.activeClassCode = activeCode;
+  const cls = appState.classes[activeCode];
+  cls.settings = normalizeSettings(cls.settings);
+  cls.settings.activeWindow = winKey;
+  if (!cls.settings.windows[winKey]) cls.settings.windows[winKey] = {};
+  cls.settings.windows[winKey].start = startDate;
+  cls.settings.windows[winKey].end = endDate;
+  cls.settings.windows[winKey].target = target;
+  cls.settings.windows.internal1.start = int1Start;
+  cls.settings.windows.internal1.end = int1End;
+  cls.settings.windows.internal2.start = int2Start;
+  cls.settings.windows.internal2.end = int2End;
+  cls.settings.holidays = holidays;
 
   await saveState(appState);
   alert("Window Settings & Holidays Saved!");
@@ -292,21 +306,27 @@ async function saveDates() {
 
 async function saveManualRecords() {
   if (!appState.activeClassCode || !appState.classes[appState.activeClassCode]) return alert("Import a CSV first!");
+  const activeCode = appState.activeClassCode;
   const lines = document.getElementById("manualRecords").value.split('\n');
   const records = [];
   lines.forEach(l => {
     const p = l.split(',').map(x => x.trim());
     if(p.length >= 4) records.push({ date: p[0], hour: parseInt(p[1]), subject: p[2].toUpperCase(), type: p[3] });
   });
-  appState.classes[appState.activeClassCode].manualRecords = records;
+  appState = await loadState();
+  if (!appState.classes[activeCode]) return alert("This class no longer exists. Re-import the CSV first.");
+  appState.activeClassCode = activeCode;
+  appState.classes[activeCode].manualRecords = records;
   await saveState(appState);
   alert("Manual Records Injected!");
+  render();
 }
 
 async function nukeData() {
   const code = appState.activeClassCode;
   if (!code) return;
   if(confirm(`Completely delete ALL data for ${code}?`)) {
+    appState = await loadState();
     appState.records = appState.records.filter(r => r.classCode !== code);
     delete appState.classes[code];
     appState.activeClassCode = Object.keys(appState.classes)[0] || "";
@@ -364,8 +384,31 @@ async function loadState() {
 function normalizeState(s) { 
   const n = { records: [], subjectCatalog: {}, classInfo: null, activeClassCode: "", classes: {}, settings: createDefaultSettings(), ...s }; 
   n.records = (s?.records || []).map(r => ({ ...r, classCode: r.classCode || s?.classInfo?.classCode || n.activeClassCode || "legacy" })); 
+  n.classes = n.classes || {};
+  Object.keys(n.classes).forEach((code) => {
+    const cls = n.classes[code];
+    cls.subjectCatalog = cls.subjectCatalog || {};
+    cls.manualRecords = cls.manualRecords || [];
+    cls.settings = normalizeSettings(cls.settings);
+  });
   if (!n.activeClassCode) n.activeClassCode = s?.classInfo?.classCode || Object.keys(n.classes)[0] || ""; 
   return n; 
+}
+
+function normalizeSettings(settings = {}) {
+  const defaults = createDefaultSettings();
+  return {
+    ...defaults,
+    ...settings,
+    windows: {
+      ...defaults.windows,
+      ...(settings.windows || {})
+    },
+    holidays: settings.holidays || [],
+    specialDays: settings.specialDays || {},
+    aliases: settings.aliases || {},
+    timetable: settings.timetable || defaults.timetable
+  };
 }
 
 function createDefaultSettings() { 
@@ -378,6 +421,7 @@ function createDefaultSettings() {
     }, 
     holidays: [], 
     specialDays: {}, 
+    aliases: {},
     timetable: ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday"].map(d => ({ 
       day: d, 
       slots: Array.from({ length: 7 }, (_, i) => ({ hour: i + 1, subject: "" })) 

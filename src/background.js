@@ -57,14 +57,16 @@ async function handleBackgroundSync(res) {
   }
 
   // --- INTERNAL DATES SYNC (Respecting Manual Override) ---
-  const settings = appState.classes[classCode].settings;
-  if (!settings.windows) settings.windows = { internal1: {}, internal2: {} };
-
-  if (res.internal1Start && !settings.windows.internal1.start) {
-    settings.windows.internal1.start = res.internal1Start;
+  // --- INTERNAL DATES SYNC ---
+  const win = appState.classes[classCode].settings.windows;
+  
+  if (res.int1.start && !win.internal1.start) {
+    win.internal1.start = res.int1.start;
+    win.internal1.end = res.int1.end;
   }
-  if (res.internal2Start && !settings.windows.internal2.start) {
-    settings.windows.internal2.start = res.internal2Start;
+  if (res.int2.start && !win.internal2.start) {
+    win.internal2.start = res.int2.start;
+    win.internal2.end = res.int2.end;
   }
   
   const totalSubjects = Object.keys(appState.classes[classCode].subjectCatalog || {}).length;

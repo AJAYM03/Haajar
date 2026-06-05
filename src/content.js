@@ -41,8 +41,7 @@
     if (!/calendar/i.test(document.title) && !/calendar/i.test(document.body.innerText)) return {}; 
     
     const holidays = [];
-    let internal1Start = null;
-    let internal2Start = null;
+    const internalDates = { int1: [], int2: [] }; // Collect all dates for exam blocks
 
     const headers = [...document.querySelectorAll("th, td, div")].filter(el => /^[A-Za-z]+\s+\d{4}$/.test(el.innerText.trim()));
     if (!headers.length) return {};
@@ -58,25 +57,30 @@
       const text = cell.innerText.trim();
       const numMatch = text.match(/^(\d{1,2})/);
       if (!numMatch) return;
-      
-      // Standardize the date to YYYY-MM-DD
       const currentDateIso = `${year}-${month}-${String(numMatch[1]).padStart(2, '0')}`;
       const textLower = text.toLowerCase();
 
-      // 1. Holiday Check (with the robust hex code fix)
+      // 1. Holiday Check
       const isRed = cell.querySelector('font[color="#FF0000"], font[color="#CC0000"], font[color="red"]');
       if (isRed) holidays.push(currentDateIso);
 
-      // 2. Internal Exam Check (Grabs the earliest date)
-      if (/internal.*1/i.test(textLower) || /1st.*internal/i.test(textLower)) {
-        if (!internal1Start || currentDateIso < internal1Start) internal1Start = currentDateIso;
+      // 2. Internal Exam Streak Detection
+      if (textLower.includes("internal") && textLower.includes("1")) {
+         internalDates.int1.push(currentDateIso);
       }
-      if (/internal.*2/i.test(textLower) || /2nd.*internal/i.test(textLower)) {
-        if (!internal2Start || currentDateIso < internal2Start) internal2Start = currentDateIso;
+      if (textLower.includes("internal") && textLower.includes("2")) {
+         internalDates.int2.push(currentDateIso);
       }
     });
     
-    return { holidays, internal1Start, internal2Start };
+    // Convert arrays to min/max range
+    const getRange = (arr) => arr.length ? ({ start: arr.sort()[0], end: arr.sort()[arr.length-1] }) : ({ start: null, end: null });
+    
+    return { 
+        holidays, 
+        int1: getRange(internalDates.int1), 
+        int2: getRange(internalDates.int2) 
+    };
   }
 
   function scanAttendanceRecords() {

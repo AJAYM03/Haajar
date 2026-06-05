@@ -105,6 +105,15 @@ function render() {
     simStart.min = cls.settings.windows.semester.start; simStart.max = cls.settings.windows.semester.end;
     simEnd.min = cls.settings.windows.semester.start; simEnd.max = cls.settings.windows.semester.end;
   }
+
+  const syncMetaEl = document.getElementById("syncMeta");
+  if (cls.lastSync && cls.lastSync.scannedAt) {
+    const d = new Date(cls.lastSync.scannedAt);
+    syncMetaEl.textContent = `Last synced: ${d.toLocaleDateString()} ${d.toLocaleTimeString()}`;
+  } else {
+    syncMetaEl.textContent = "No portal sync yet";
+  }
+
 }
 
 function renderSubjectCards(container, subjects, suffix = "") {

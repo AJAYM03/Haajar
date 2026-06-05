@@ -49,7 +49,8 @@
       const text = cell.innerText.trim();
       const numMatch = text.match(/^(\d{1,2})/);
       if (!numMatch) return;
-      const isRed = cell.querySelector('font[color="red"]') || getComputedStyle(cell).color === 'rgb(255, 0, 0)';
+      // The updated, robust color check
+const isRed = cell.querySelector('font[color="#FF0000"], font[color="#CC0000"], font[color="red"]');
       if (isRed) holidays.push(`${year}-${month}-${String(numMatch[1]).padStart(2, '0')}`);
     });
     return holidays;

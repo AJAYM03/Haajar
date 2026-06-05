@@ -152,8 +152,16 @@ I'm just happy I took a shot at building it.
 
 ---
 
+## Credits
+
+Haajar was started and originally built by [AJAYM03](https://github.com/AJAYM03) as a small attempt to make attendance decisions less stressful and more transparent for RSET students.
+
+If you fork it, improve it, or adapt it for another batch, a small credit back to the original repo is appreciated. No drama, no gatekeeping; just a note so the project trail stays clear.
+
+---
+
 ## License
 
-MIT License.
+MIT License. See [LICENSE](LICENSE).
 
-Do whatever you want with it.
+Use it, fork it, fix it, adapt it.
